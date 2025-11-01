@@ -17,7 +17,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 from decouple import config
 import os
 
-
+AUTH_USER_MODEL = 'accounts.CustomUser'
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
@@ -53,10 +53,11 @@ EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 EMAIL_HOST_USER = config('EMAIL_HOST_USER')
 EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD')
+DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL')
 
-CELERY_BROKER_URL = config('CELERY_BROKER_URL')
+# CELERY_BROKER_URL = config('CELERY_BROKER_URL')
 
-CELERY_RESULT_BACKEND = config('CELERY_RESULT_BACKEND')
+# CELERY_RESULT_BACKEND = config('CELERY_RESULT_BACKEND')
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
