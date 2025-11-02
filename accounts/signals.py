@@ -10,3 +10,10 @@ def create_credit_account(sender, instance, created, **kwargs):
     if instance.is_active:
         if not hasattr(instance, 'creditaccount'):
             CreditAccount.objects.create(user=instance, credits=1000)
+            CreditTransaction.objects.create(
+                credit_account=instance.creditaccount,
+                amount=1000,
+                transaction_type='bonus',
+                message='Initial bonus credits for account activation'
+            )
+

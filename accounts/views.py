@@ -6,6 +6,7 @@ from .utils import send_the_email
 from .models import OTP
 from django.contrib.auth import get_user_model
 from rest_framework.permissions import IsAuthenticated, AllowAny
+from .tasks import send_otp_email_task
 User= get_user_model()
 from random import randint
 class RegisterView(APIView):
@@ -18,7 +19,7 @@ class RegisterView(APIView):
             code = randint(100000,999999)
             OTP.objects.create(user=user, code=code, type='registration')
             message = f"Hello {user.username}\n\n Your verification code is: {code} ! It will expire in 10 minutes.\n\nThank you for registering with us!\n\nBest regards,\nMultiAI Platform Team"
-            send_the_email(subject="Welcome to MultiAI Platform 🚀",user=user,message=message,message_type='registration')
+            send_the_email(subject="Welcome to MultiAI Platform 🚀",user_email=user.email,message=message,message_type='registration')
             return Response({"message": "User registered successfully. Please check your email for the verification code."}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -68,7 +69,7 @@ class LoginView(APIView):
     
 
 class LogoutView(APIView):
-    permission_classes = [IsAuthenticated]
+    # permission_classes = [IsAuthenticated]
     def post(self, request):
         try:
             refresh_token = request.data["refresh"]
@@ -81,3 +82,20 @@ class LogoutView(APIView):
 
 
 
+
+
+#Transection History View
+
+from .models import CreditTransaction
+from .serializers import CreditTransactionSerializer
+from rest_framework.generics import ListAPIView
+
+class CreditTransactionHistoryView(ListAPIView):
+    serializer_class = CreditTransactionSerializer
+    permission_classes = [IsAuthenticated]
+    def get_queryset(self):
+        user = self.request.user
+        if not user.is_staff:
+            return CreditTransaction.objects.select_related('credit_account').filter(credit_account__user=user).order_by('-created_at')
+        return CreditTransaction.objects.select_related('credit_account').all().order_by('-created_at')
+            

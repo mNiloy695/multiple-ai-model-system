@@ -89,5 +89,7 @@ class LoginSerializer(serializers.Serializer):
 
 # this site for Credit Account Serializer
 from .models import CreditTransaction
-
-    
+class CreditTransactionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CreditTransaction
+        fields = ['id', 'amount', 'transaction_type', 'message', 'created_at']

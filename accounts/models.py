@@ -4,7 +4,6 @@ from django.utils import timezone
 
 
 
-
 class CustomUserManager(BaseUserManager):
     def create_user(self, email, password=None, **extra_fields):
         if not email:
@@ -68,7 +67,8 @@ class CreditAccount(models.Model):
 class CreditTransaction(models.Model):
     credit_account = models.ForeignKey(CreditAccount, on_delete=models.CASCADE,related_name='transactions')
     amount = models.IntegerField()
-    transaction_type = models.CharField(max_length=10, choices=[('add', 'Add'), ('deduct', 'Deduct')])
+    transaction_type = models.CharField(max_length=10, choices=[('add', 'Add'), ('deduct', 'Deduct'),('refund', 'Refund'),('bonus', 'Bonus')])
+    message = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
