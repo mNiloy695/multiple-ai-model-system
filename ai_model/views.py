@@ -51,7 +51,10 @@ class ChatSessionView(viewsets.ModelViewSet):
         user=self.request.user
 
         if not user.is_staff:
-            return self.queryset.filter(user=user)
+            return self.queryset.filter(user=user).order_by('-created_at')
         
-        return self.queryset
+        return self.queryset.all().order_by('-created_at')
+    def perform_create(self, serializer):
+        model=AIModelInfo.objects.filter(model_id="gemini-2.5-flash").first()
+        serializer.save(model=model,user=self.request.user)
 

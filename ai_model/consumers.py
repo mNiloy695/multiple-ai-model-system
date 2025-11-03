@@ -7,22 +7,81 @@ from jwt import decode as jwt_decode
 from django.conf import settings
 from django.contrib.auth.models import AnonymousUser
 from rest_framework_simplejwt.tokens import UntypedToken
-import google.generativeai as genai
+from google import genai
+from accounts.models import CreditAccount
+
 User = get_user_model()
 
-def gemini_response(message,model_id,api_key):
-   API_KEY = api_key 
-   genai.configure(api_key=API_KEY)
-   #load the model using model_id
-   model = genai.GenerativeModel(model_id)
-   response = model.generate_content(message)
-   return response.text
 
+def gemini_response(message, model_id, api_key,user_id):
+    
+    client = genai.Client(api_key=api_key)
+    word_count=len(message.split())
+    print(word_count)
 
+    user=User.objects.filter(id=user_id).first()
+    user_credit_account=CreditAccount.objects.get(user=user)
+    if user_credit_account.credits <= int(word_count):
+       return json.dumps(
+          {
+             "error":"Insufficient credits."
+          }
+       )
+       
+    
+    user_credit_account.credits-=int(word_count)
+    user_credit_account.save()
+       
+      
+    
+    try:
+        model_info = client.models.get(model=model_id)
+        is_chat = getattr(model_info, "supported_input_types", []) and "messages" in model_info.supported_input_types
+    except Exception as e:
+        
+        is_chat = False
+    
+    if is_chat:
+        
+        response = client.models.generate_chat(
+            model=model_id,
+            messages=[{"author": "user", "content": message}]
+        )
+        try:
+            text=response.candidates[0].content
+            word_count=len(text.split())
+            if user_credit_account.credits <int(word_count):
+               return json.dumps({
+                  "error":"Insufficient credits."
+               })
+            
+            user_credit_account.credits-=int(word_count)
+            user_credit_account.save()
+            
+            return response.candidates[0].content
+        except (AttributeError, IndexError):
+            return json.dumps(response.to_dict())
+    
+    else:
+     
+        response = client.models.generate_content(
+            model=model_id,
+            contents=message
+        )
+        try:
+            text=response.text
+            word_count=len(text.split())
+            if user_credit_account.credits <int(word_count):
+               return json.dumps({
+                  "error":"Insufficient credits."
+               })
+            
+            user_credit_account.credits-=int(word_count)
+            user_credit_account.save()
+            return response.text
+        except AttributeError:
+            return json.dumps(response.to_dict())
 
-
-   
-   
 
 
 
@@ -158,6 +217,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
         return
 
       message_content = data.get("message")
+      if not message_content:
+         return
      
       saved_message = await self.save_message(
         session_id=self.session_id,
@@ -174,19 +235,33 @@ class ChatConsumer(AsyncWebsocketConsumer):
       session_data=await self.get_session_data(session_id=self.session_id,user=self.user)
 
       if session_data:
-         model=session_data.model
+         print(session_data)
+         model=session_data.get('model')
          if model:
             provider=model.provider
             model_id=model.model_id
             api_key=model.api_key
-
+            print(provider,model_id,api_key)
             if provider.lower()=='google':
-               
+               try:
+                  ai_reply = await database_sync_to_async(gemini_response)(message_content, model_id, api_key,self.user.id)
 
-         
-     
-
-        
+                  saved_ai_message = await self.save_message(
+                    session_id=self.session_id,
+                    user=self.user,
+                    sender="ai",
+                    content=ai_reply
+                )
+                  await self.send(text_data=json.dumps({
+                    "type": "new_message",
+                    "message": saved_ai_message
+                }))
+               except Exception as e:
+                  await self.send(text_data=json.dumps({
+                    "type": "error",
+                    "message": f"Gemini error: {str(e)}"
+                }))
+                
 
     async def disconnect(self, close_code):
         await self.channel_layer.group_discard(

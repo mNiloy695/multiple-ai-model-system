@@ -28,7 +28,7 @@ class CustomUserManager(BaseUserManager):
 class CustomUser(AbstractUser):
     username = models.CharField(max_length=150,unique=True,null=True,blank=True)
     email = models.EmailField(unique=True)
-
+    total_token_used=models.IntegerField(default=0,null=True,blank=True)
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = []
 
