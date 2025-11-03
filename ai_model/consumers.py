@@ -1,14 +1,19 @@
 from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
-from .models import ChatSession
+from .models import ChatSession,ChatMessage
 import json
-
+from django.contrib.auth import get_user_model
+from jwt import decode as jwt_decode
+from django.conf import settings
+from django.contrib.auth.models import AnonymousUser
+from rest_framework_simplejwt.tokens import UntypedToken
+User = get_user_model()
 class ChatConsumer(AsyncWebsocketConsumer):
-
+    
     @database_sync_to_async
     def get_session_messages(self, session_id, user):
        
-        session = ChatSession.objects.filter(id=session_id, users=user).prefetch_related("messages").first()
+        session = ChatSession.objects.filter(id=session_id, user=user).prefetch_related("messages").first()
         if not session:
             return []  
 
@@ -22,14 +27,70 @@ class ChatConsumer(AsyncWebsocketConsumer):
             }
             for msg in messages
         ]
+    
+    @database_sync_to_async
+    def save_message(self, session_id, user,sender,content):
+        print(user)
+        try:
+           session = ChatSession.objects.get(id=session_id, user=user)
+        except ChatSession.DoesNotExist as e:
+           print("session not found")
+           raise e
+        print(user)
+        if not content.strip():
+               return
+        msg = ChatMessage.objects.create(
+            session=session,
+            sender=sender, 
+            content=content
+        )
+       
+        return {
+            "id": msg.id,
+            "sender": msg.sender,
+            "content": msg.content,
+            "timestamp": msg.created_at.isoformat()
+        }
+    
+    async def get_user_from_token(self):
+        query_string = self.scope['query_string'].decode()
+        token = None
+        for part in query_string.split("&"):
+           if part.startswith("token="):
+             token = part.split("=")[1]
+
+        if not token:
+          return AnonymousUser()
+ 
+        try:
+          decoded = jwt_decode(token, settings.SECRET_KEY, algorithms=["HS256"])
+          user_id = decoded.get("user_id")
+          user = await database_sync_to_async(User.objects.get)(id=user_id)
+          return user
+        except Exception:
+          return AnonymousUser()
 
     async def connect(self):
-        self.user = self.scope['user']
+        print("i am in the connect function")
+        self.user = await self.get_user_from_token()
+        print(self.user)
         if not self.user.is_authenticated:
             await self.close()
+            print("not authenticated")
             return
 
         self.session_id = self.scope['url_route']['kwargs']['session_id']
+        # if self.session_id:
+        #    session = await database_sync_to_async(ChatSession.objects.filter(id=self.session_id, user=self.user).first)()
+        #    if session:
+        #       self.session = session
+        #    else:
+        #       self.session = await database_sync_to_async(ChatSession.objects.create)(user=self.user, model=None)
+        # else:
+        
+        #     self.session = await database_sync_to_async(ChatSession.objects.create)(user=self.user, model=None)
+    
+
         self.room_group_name = f'chat_{self.session_id}'
 
         # Add user to group
@@ -48,7 +109,34 @@ class ChatConsumer(AsyncWebsocketConsumer):
         }))
 
     
-    # async def receive(self, text_data = None, bytes_data = None):
+    async def receive(self, text_data=None, bytes_data=None):
+      if not text_data:
+        
+         return
+
+      try:
+        data = json.loads(text_data)
+      except json.JSONDecodeError:
+        
+        await self.send(text_data=json.dumps({
+            "type": "error",
+            "message": "Invalid JSON format"
+        }))
+        return
+
+      message_content = data.get("message")
+      saved_message = await self.save_message(
+        session_id=self.session_id,
+        user=self.user,
+        sender="user",
+        content=message_content
+     )
+
+      await self.send(text_data=json.dumps({
+        "type": "new_message",
+        "message": saved_message
+    }))
+
         
 
     async def disconnect(self, close_code):

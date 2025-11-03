@@ -44,7 +44,7 @@ class CustomPermission(permissions.BasePermission):
         return request.user.is_staff or obj.user==request.user
 class ChatSessionView(viewsets.ModelViewSet):
     queryset=ChatSession.objects.all().prefetch_related('messages')
-    serializer=ChatSessionSerializer
+    serializer_class=ChatSessionSerializer
     permission_classes=[CustomPermission]
 
     def get_queryset(self):
