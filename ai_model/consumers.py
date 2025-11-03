@@ -7,7 +7,25 @@ from jwt import decode as jwt_decode
 from django.conf import settings
 from django.contrib.auth.models import AnonymousUser
 from rest_framework_simplejwt.tokens import UntypedToken
+import google.generativeai as genai
 User = get_user_model()
+
+def gemini_response(message,model_id,api_key):
+   API_KEY = api_key 
+   genai.configure(api_key=API_KEY)
+   #load the model using model_id
+   model = genai.GenerativeModel(model_id)
+   response = model.generate_content(message)
+   return response.text
+
+
+
+
+   
+   
+
+
+
 class ChatConsumer(AsyncWebsocketConsumer):
     
     @database_sync_to_async
@@ -27,6 +45,21 @@ class ChatConsumer(AsyncWebsocketConsumer):
             }
             for msg in messages
         ]
+    @database_sync_to_async
+    def get_session_data(self, session_id, user):
+      try:
+        session = ChatSession.objects.select_related("user").get(id=session_id, user=user)
+        return {
+            "id": session.id,
+            "user": session.user.id,
+            "model": getattr(session, "model", None),  # only if model field exists
+            "created_at": session.created_at.isoformat(),
+            "updated_at": session.updated_at.isoformat() if hasattr(session, "updated_at") else None,
+            "total_messages": session.messages.count(),
+        }
+      except ChatSession.DoesNotExist:
+        return None
+
     
     @database_sync_to_async
     def save_message(self, session_id, user,sender,content):
@@ -125,17 +158,33 @@ class ChatConsumer(AsyncWebsocketConsumer):
         return
 
       message_content = data.get("message")
+     
       saved_message = await self.save_message(
         session_id=self.session_id,
         user=self.user,
         sender="user",
         content=message_content
      )
-
+      
       await self.send(text_data=json.dumps({
         "type": "new_message",
         "message": saved_message
     }))
+    
+      session_data=await self.get_session_data(session_id=self.session_id,user=self.user)
+
+      if session_data:
+         model=session_data.model
+         if model:
+            provider=model.provider
+            model_id=model.model_id
+            api_key=model.api_key
+
+            if provider.lower()=='google':
+               
+
+         
+     
 
         
 
