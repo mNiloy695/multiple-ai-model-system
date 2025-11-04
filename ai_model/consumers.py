@@ -8,67 +8,115 @@ from django.conf import settings
 from django.contrib.auth.models import AnonymousUser
 from google import genai
 from accounts.models import CreditAccount
+from django.contrib.auth import get_user_model
+import requests
+import base64
+User=get_user_model()
 
-User = get_user_model()
+from google import genai
 
-
-def gemini_response(message, model_id, api_key, user_id):
-    """
-    Sends a message to Google Gemini and returns a response.
-    - Detects if model is text or image.
-    - Deducts credits for prompt + AI response.
-    Returns dict {"text": str, "images": [url1, url2, ...]}
-    """
-    client = genai.Client(api_key=api_key)
-
-    user = User.objects.filter(id=user_id).first()
-    if not user:
-        return {"error": "User not found.", "images": []}
-
-    credit_account = CreditAccount.objects.get(user=user)
-    prompt_words = len(message.split())
-    if credit_account.credits < prompt_words:
-        return {"error": "Insufficient credits.", "images": []}
-
-    credit_account.credits -= prompt_words
-    credit_account.save()
-
-    text = ""
-    images = []
-
+def gemini_response(message, model_id, api_key, user_id, images_data_list=None):
+ 
     try:
-        
-        if "image" in model_id.lower() or "bison" in model_id.lower():
-            
-            response = client.models.generate_image(model=model_id, prompt=message, size="1024x1024")
-            try:
-                images.append(response.candidates[0].content[0].image_uri)
-                text = "Generated image(s)"
-            except Exception:
-                text = "Image generated but failed to fetch URL."
-        else:
-          
-            try:
-                response = client.models.generate_chat(
-                    model=model_id,
-                    messages=[{"author": "user", "content": message}]
-                )
-                text = response.candidates[0].content.parts[0].text
-            except Exception:
-                response = client.models.generate_content(model=model_id, contents=message)
-                text = getattr(response, "text", str(response))
+        client = genai.Client(api_key=api_key)
 
-        # Deduct AI response credits for text only
+     
+        user = User.objects.filter(id=user_id).first()
+        if not user:
+            return {"text": "", "images": [], "sender": "system", "error": "User not found."}
+
+        credit_account = CreditAccount.objects.filter(user=user).first()
+        if not credit_account:
+            return {"text": "", "images": [], "sender": "system", "error": "Credit account not found."}
+
+        
+        prompt_words = len(message.split())
+        if credit_account.credits < prompt_words:
+            return {"text": "", "images": [], "sender": "system", "error": "Insufficient credits for prompt."}
+        
+      
+
+        supports_image = not (
+            "lite" in model_id.lower() or
+            "tts" in model_id.lower() or
+            "audio" in model_id.lower() or
+            "embedding" in model_id.lower()
+        )
+
+        if images_data_list and not supports_image:
+            return {
+                "text": f" The selected model '{model_id}' does not support image input.",
+                "images": [],
+                "sender": "system",
+                "error": None
+            }
+
+        contents = [{"role": "user", "parts": [{"text": message}]}]
+
+        if images_data_list and supports_image:
+            for img in images_data_list:
+                try:
+                   
+                    if isinstance(img, str) and img.startswith("http"):
+                        resp = requests.get(img)
+                        resp.raise_for_status()
+                        img_data = base64.b64encode(resp.content).decode("utf-8")
+                        contents[0]["parts"].append({
+                            "inline_data": {
+                                "mime_type": "image/png",
+                                "data": img_data
+                            }
+                        })
+
+                    # If it's already base64
+                    elif isinstance(img, str):
+                        contents[0]["parts"].append({
+                            "inline_data": {
+                                "mime_type": "image/png",
+                                "data": img
+                            }
+                        })
+                except Exception as e:
+                    return {
+                        "text": f"Failed to fetch or convert image: {img}. Error: {str(e)}",
+                        "images": [],
+                        "sender": "system",
+                        "error": None
+                    }
+
+        
+        response = client.models.generate_content(model=model_id, contents=contents)
+
+    
+        text = getattr(response, "text", "")
+        if not text and hasattr(response, "candidates") and response.candidates:
+            candidate_parts = response.candidates[0].content.parts
+            text_parts = [p.text for p in candidate_parts if hasattr(p, "text")]
+            text = " ".join(text_parts)
+
         response_words = len(text.split())
-        if credit_account.credits < response_words:
-            return {"error": "Insufficient credits for AI response.", "images": images}
-        credit_account.credits -= response_words
+        if response_words + prompt_words > credit_account.credits:
+           allowed_words = credit_account.credits - prompt_words
+           words = text.split()
+           text = " ".join(words[:allowed_words])
+           response_words = allowed_words
+
+        credit_account.credits -= (prompt_words + response_words)
         credit_account.save()
 
-        return {"text": text, "images": images}
+       
+
+        images = []
+        if supports_image and hasattr(response, "candidates") and response.candidates:
+            for part in response.candidates[0].content.parts:
+                if hasattr(part, "inline_data") and hasattr(part.inline_data, "data"):
+                    images.append(f"data:image/png;base64,{part.inline_data.data}")
+
+        return {"text": text, "images": images, "sender": "ai", "error": None}
 
     except Exception as e:
-        return {"error": f"Gemini request failed: {str(e)}", "images": []}
+        return {"text": "", "images": [], "sender": "system", "error": f"Gemini request failed: {str(e)}"}
+
 
 
 
@@ -198,14 +246,15 @@ class ChatConsumer(AsyncWebsocketConsumer):
             if model_id and api_key:
                 try:
                     ai_response = await database_sync_to_async(gemini_response)(
-                        message_content, model_id, api_key, self.user.id
+                        message_content, model_id, api_key, self.user.id,user_images
                     )
                     if ai_response:
                         saved_ai_message = await self.save_message(
                             self.session_id,
                             self.user,
                             "ai",
-                            content=ai_response.get("text", ""),
+                            content = ai_response.get("text") or ai_response.get("content") or ai_response.get("error") or "",
+
                             images=ai_response.get("images", [])
                         )
                         if saved_ai_message:
@@ -216,4 +265,4 @@ class ChatConsumer(AsyncWebsocketConsumer):
             await self.send(text_data=json.dumps({"type": "error", "message": f"Unsupported provider: {provider}"}))
 
     async def disconnect(self, close_code):
-        await self.channel_layer.group_discard(self.room_group_name, self.channel_name)
+        await self.channel_layer.group_discard(self.room_group_name ,self.channel_name)
