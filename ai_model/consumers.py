@@ -58,7 +58,7 @@ def gemini_response(message, model_id, api_key, user_id):
                 response = client.models.generate_content(model=model_id, contents=message)
                 text = getattr(response, "text", str(response))
 
-        
+        # Deduct AI response credits for text only
         response_words = len(text.split())
         if credit_account.credits < response_words:
             return {"error": "Insufficient credits for AI response.", "images": images}
