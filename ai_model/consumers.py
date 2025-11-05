@@ -11,9 +11,118 @@ from accounts.models import CreditAccount
 from django.contrib.auth import get_user_model
 import requests
 import base64
+from openai import OpenAI
 User=get_user_model()
 
-from google import genai
+
+
+User = get_user_model()
+
+
+def gpt_response(message, model_id, api_key, user_id, images_data_list=None, max_response_tokens=1000):
+   
+    try:
+        client = OpenAI(api_key=api_key)
+
+        # --- Validate user & credit ---
+        user = User.objects.filter(id=user_id).first()
+        if not user:
+            return {"text": "", "images": [], "sender": "system", "error": "User not found."}
+
+        credit_account = CreditAccount.objects.filter(user=user).first()
+        if not credit_account:
+            return {"text": "", "images": [], "sender": "system", "error": "Credit account not found."}
+
+        prompt_words = len(message.split())
+        if credit_account.credits < prompt_words:
+            return {"text": "", "images": [], "sender": "system", "error": "Insufficient credits for prompt."}
+
+        # Deduct prompt words immediately
+        credit_account.credits -= prompt_words
+        credit_account.save()
+
+        # --- Determine model type ---
+        chat_models = ["gpt-3.5-turbo", "gpt-4", "gpt-4o", "gpt-4-vision", "gpt-5"]
+        image_models = ["dall-e", "gpt-image", "gpt-4-vision"]  # extend if new models support image
+        is_chat_model = any(k in model_id.lower() for k in chat_models)
+        supports_image = any(k in model_id.lower() for k in image_models)
+
+        if images_data_list and not supports_image:
+            return {
+                "text": f"The selected model '{model_id}' does not support image input.",
+                "images": [],
+                "sender": "system",
+                "error": None
+            }
+
+        # --- Prepare message/content payload ---
+        messages = [{"role": "user", "content": message}] if is_chat_model else None
+        prompt = message if not is_chat_model else None
+
+        # Handle image input for multimodal models
+        image_blocks = []
+        if images_data_list and supports_image:
+            for img in images_data_list:
+                try:
+                    if img.startswith("http"):
+                        resp = requests.get(img)
+                        resp.raise_for_status()
+                        img_data = base64.b64encode(resp.content).decode("utf-8")
+                    else:
+                        img_data = img  
+
+                    image_blocks.append(f"data:image/png;base64,{img_data}")
+                except Exception as e:
+                    
+                    continue
+
+       
+        text = ""
+        images = []
+
+        try:
+            if is_chat_model:
+                chat_content = [{"role": "user", "content": message}]
+                response = client.chat.completions.create(
+                    model=model_id,
+                    messages=chat_content,
+                    max_tokens=max_response_tokens
+                )
+                if response.choices:
+                    text = response.choices[0].message.content.strip()
+            else:
+                response = client.completions.create(
+                    model=model_id,
+                    prompt=prompt,
+                    max_tokens=max_response_tokens
+                )
+                if response.choices:
+                    text = response.choices[0].text.strip()
+
+        except Exception as e:
+            # Revert prompt credit if call fails
+            credit_account.credits += prompt_words
+            credit_account.save()
+            return {"text": "", "images": [], "sender": "system", "error": f"GPT request failed: {str(e)}"}
+
+        # --- Deduct response words based on remaining credits ---
+        response_words = len(text.split())
+        if response_words > credit_account.credits:
+            allowed = credit_account.credits
+            text = " ".join(text.split()[:allowed])
+            response_words = allowed
+
+        credit_account.credits -= response_words
+        credit_account.save()
+
+        # --- Include images if model supports and generated ---
+        if supports_image:
+            images = image_blocks  # Could extend to parse model response if AI returns images
+
+        return {"text": text, "images": images, "sender": "ai", "error": None}
+
+    except Exception as e:
+        return {"text": "", "images": [], "sender": "system", "error": f"Unexpected error: {str(e)}"}
 
 def gemini_response(message, model_id, api_key, user_id, images_data_list=None):
  
@@ -246,6 +355,27 @@ class ChatConsumer(AsyncWebsocketConsumer):
             if model_id and api_key:
                 try:
                     ai_response = await database_sync_to_async(gemini_response)(
+                        message_content, model_id, api_key, self.user.id,user_images
+                    )
+                    if ai_response:
+                        saved_ai_message = await self.save_message(
+                            self.session_id,
+                            self.user,
+                            "ai",
+                            content = ai_response.get("text") or ai_response.get("content") or ai_response.get("error") or "",
+
+                            images=ai_response.get("images", [])
+                        )
+                        if saved_ai_message:
+                            await self.send(text_data=json.dumps({"type": "new_message", "message": saved_ai_message}))
+                except Exception as e:
+                    await self.send(text_data=json.dumps({"type": "error", "message": f"AI error: {str(e)}"}))
+        elif provider=="openai":
+            model_id = getattr(model, "model_id", None)
+            api_key = getattr(model, "api_key", None)
+            if model_id and api_key:
+                try:
+                    ai_response = await database_sync_to_async(gpt_response)(
                         message_content, model_id, api_key, self.user.id,user_images
                     )
                     if ai_response:
