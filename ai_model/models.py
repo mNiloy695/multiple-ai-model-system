@@ -5,6 +5,7 @@ class AIModelInfo(models.Model):
 
     PROVIDER_CHOICES = [
         ('openai', 'OpenAI'),
+        ('leonardo', 'Leonardo AI'),
         ('huggingface', 'Hugging Face'),
         ('anthropic', 'Anthropic'),
         ('google', 'Google DeepMind'),
@@ -47,6 +48,7 @@ User= get_user_model()
 class ChatSession(models.Model):
     model = models.ForeignKey(AIModelInfo, on_delete=models.CASCADE,blank=True,related_name='chat_sessions')
     user = models.ForeignKey(User, on_delete=models.CASCADE,blank=True, related_name='chat_sessions')
+    summary=models.TextField(null=True,blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

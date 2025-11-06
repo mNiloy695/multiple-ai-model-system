@@ -14,8 +14,13 @@ class AIModelLimitedSerializer(serializers.ModelSerializer):
         read_only_fields=['created_at','updated_at']
 
 
+class ChatMessageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model=ChatMessage
+        fields="__all__"
 
 class ChatSessionSerializer(serializers.ModelSerializer):
+    messages=ChatMessageSerializer(read_only=True,many=True)
     class Meta:
         model=ChatSession
-        fields="__all__"
+        fields=['id','model','user','messages','summary']
