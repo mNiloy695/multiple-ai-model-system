@@ -125,6 +125,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
         message_content = data.get("message", "")
         user_images = data.get("images", [])
+        height=data.get('height')
+        width=data.get('width')
 
         
         saved_message = await self.save_message(
@@ -165,10 +167,11 @@ class ChatConsumer(AsyncWebsocketConsumer):
         elif provider=="openai":
             model_id = getattr(model, "model_id", None)
             api_key = getattr(model, "api_key", None)
+            
             if model_id and api_key:
                 try:
                     ai_response = await database_sync_to_async(gpt_response)(
-                        message_content, model_id, api_key, self.user.id,user_images
+                        message_content, model_id, api_key, self.user.id,user_images,height,width
                     )
                     if ai_response:
                         saved_ai_message = await self.save_message(

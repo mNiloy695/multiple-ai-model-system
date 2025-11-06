@@ -27,9 +27,15 @@ SECRET_KEY = 'django-insecure-se07a)!8@y+syd4m4)bgy-9-9+bla8f^#db0bhk8#5lqqyrf8=
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [
+    "overrigged-botanically-lila.ngrok-free.dev",
+    '127.0.0.1',
+]
 
-
+CSRF_TRUSTED_ORIGINS = [
+    "https://overrigged-botanically-lila.ngrok-free.dev",
+    #
+]
 # Application definition
 
 INSTALLED_APPS = [
@@ -45,6 +51,7 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt',
     'rest_framework_simplejwt.token_blacklist',
     'channels',
+    'plan',
 ]
 
 # Email Settings
@@ -64,6 +71,11 @@ DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL')
 # CELERY_RESULT_SERIALIZER = 'json'
 # CELERY_TIMEZONE = 'UTC'
 
+
+#stripe 
+
+STRIPE_SECRET_KEY =config("STRIPE_SECRET_KEY")
+WEBHOOK_SECRET=config("WEBHOOK_SECRET_KEY")
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
