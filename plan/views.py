@@ -55,7 +55,8 @@ class CreateCheckoutSessionView(APIView):
                 mode="payment",
                 metadata={
         "user_id": str(user.id),
-        "words": str(plan.words_or_credits)
+        "words": str(plan.words_or_credits),
+        "price_id":str(price_id)
     },
                 success_url="http://127.0.0.1:8081/api/v1/success?session_id={CHECKOUT_SESSION_ID}",
                 cancel_url="http://127.0.0.1:8081/api/v1/cancel",
@@ -65,3 +66,18 @@ class CreateCheckoutSessionView(APIView):
 
         except Exception as e:
             return Response({"error ms": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+
+from .models import Revenue
+from django.db.models import Sum
+class TotalRevenueView(APIView):
+    permission_classes=[permissions.IsAdminUser]
+    
+    def get(self, request, *args, **kwargs):
+        total_revenue=Revenue.objects.aggregate(total=Sum('amount'))['total'] or 0
+        return Response({
+            'revenue':total_revenue
+        })
+
+        

@@ -6,7 +6,9 @@ from AIModelBackend import settings
 from accounts.models import CreditAccount,CreditTransaction
 from django.db.models import F
 import json
-
+from .models import Revenue,PlanModel
+from django.contrib.auth import get_user_model
+User=get_user_model()
 stripe.api_key = settings.STRIPE_SECRET_KEY
 webhook_secret = settings.WEBHOOK_SECRET  
 
@@ -26,6 +28,7 @@ def stripe_webhook(request):
             metadata = session.get('metadata', {})
             user_id = metadata.get('user_id')
             words = metadata.get('words', 0)
+            price_id=metadata.get("price_id",None)
 
             try:
                 
@@ -49,6 +52,21 @@ def stripe_webhook(request):
                     message=f'{words} credits added successfully in you account'
 
                 )
+            
+            plan=PlanModel.objects.filter(stripe_product_price_id=price_id).first()
+            user=User.objects.get(id=user_id)
+
+            if plan and user:
+                
+                Revenue.objects.create(
+                    user=user,
+                    plan=plan,
+                    amount=plan.amount,
+                    payment_id=session.get('payment_intent')
+                    
+                )
+            
+
 
             if not updated:
                 return JsonResponse({'error': 'Credit Account Not Found'}, status=404)
@@ -56,7 +74,7 @@ def stripe_webhook(request):
         return JsonResponse({'status': 'success'})
 
     except ValueError as e:
-       
+      
         return JsonResponse({'error': 'Invalid payload'}, status=400)
     except stripe.error.SignatureVerificationError:
         
