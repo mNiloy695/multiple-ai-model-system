@@ -130,7 +130,7 @@ def _chat_request(client, model_id, message, max_tokens):
     response = client.chat.completions.create(
         model=model_id,
         messages=[{"role": "user", "content": message}],
-        max_tokens=max_tokens
+        max_completion_tokens=max_tokens
     )
     return response.choices[0].message.content.strip()
 
@@ -139,7 +139,7 @@ def _completion_request(client, model_id, message, max_tokens):
     response = client.completions.create(
         model=model_id,
         prompt=message,
-        max_tokens=max_tokens
+        max_completion_tokens=max_tokens
     )
     return response.choices[0].text.strip()
 
@@ -157,45 +157,33 @@ def _vision_request(client, model_id, message, images_data_list, max_tokens):
         messages=[
             {"role": "user", "content": [{"type": "text", "text": message}] + image_blocks}
         ],
-        max_tokens=max_tokens
+        max_completion_tokens=max_tokens
     )
     return response.choices[0].message.content.strip()
 
 
-def _image_request(client, model_id, message, width=None, height=None):
-   
+def _image_request(client, model_id, prompt, width=None, height=None):
+    """
+    Generate an image using any OpenAI image model.
+    """
+    # Default size
+    size = f"{width}x{height}" if width and height else "1024x1024"
 
-    model_lower = model_id.lower()
-    
-    allowed_sizes = {
-        "dall-e-2": {"256x256", "512x512", "1024x1024"},
-        "dall-e-3": {"1024x1024", "1024x1792", "1792x1024"},
-        "gpt-image-1": {"512x512", "1024x1024", "2048x2048"},
-        "gpt-image-1-mini": {"512x512", "1024x1024"},
-    }
+    # Optionally: define some common allowed sizes
+    common_sizes = {"256x256", "512x512", "1024x1024", "1024x1792", "1792x1024", "2048x2048"}
+    if size not in common_sizes:
+        size = "1024x1024"  # fallback
 
-    if width and height:
-        size = f"{width}x{height}"
-    else:
-        size = "1024x1024"
-
-    allowed = set()
-    for key, sizes in allowed_sizes.items():
-        if key in model_lower:
-            allowed = sizes
-            break
-
-    
-    if size not in allowed:
-        size = sorted(allowed)[-1] if allowed else "1024x1024"
-
+    # Generate image dynamically using any model
     response = client.images.generate(
         model=model_id,
-        prompt=message,
+        prompt=prompt,
         size=size
     )
+
     images = [img.url for img in response.data]
-    return f"Image generated successfully ({size}).", images
+    return f"Image generated successfully ({size}) using {model_id}.", images
+
 
 
 

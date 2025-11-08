@@ -55,6 +55,6 @@ class ChatSessionView(viewsets.ModelViewSet):
         
         return self.queryset.all().order_by('-created_at')
     def perform_create(self, serializer):
-        model=AIModelInfo.objects.filter(model_id="gemini-2.5-flash").first()
+        model=AIModelInfo.objects.filter(model_id="gpt-3.5-turbo").first()
         serializer.save(model=model,user=self.request.user)
 
