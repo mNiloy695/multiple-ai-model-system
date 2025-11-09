@@ -47,7 +47,8 @@ class CreateCheckoutSessionView(APIView):
             price_id=plan.stripe_product_price_id
             
             session = stripe.checkout.Session.create(
-                payment_method_types=["card"],
+                payment_method_types=["card",],
+                
                 line_items=[{
                     "price": price_id,
                     "quantity": 1,
@@ -81,3 +82,105 @@ class TotalRevenueView(APIView):
         })
 
         
+
+
+
+#google payment 
+
+
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from django.shortcuts import get_object_or_404
+from invoices.models import InvoiceModel as Invoice
+
+# class VerifyGooglePurchaseView(APIView):
+#     def post(self, request):
+#         token = request.data.get("purchase_token")
+#         product_id = request.data.get("product_id")
+#         package_name = settings.GOOGLE_PACKAGE_NAME
+
+#         url = f"https://androidpublisher.googleapis.com/androidpublisher/v3/applications/{package_name}/purchases/products/{product_id}/tokens/{token}?access_token={settings.GOOGLE_API_ACCESS_TOKEN}"
+#         r = requests.get(url)
+#         data = r.json()
+
+#         if data.get("purchaseState") == 0:
+#             # purchase is valid
+#             return Response({"status": "success"})
+#         return Response({"status": "invalid"})
+
+
+# views.py
+
+
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from google.oauth2 import service_account
+from google.auth.transport.requests import Request
+from django.conf import settings
+from django.shortcuts import get_object_or_404
+import requests
+from invoices.models import InvoiceModel as Invoice
+
+
+class VerifyGooglePurchaseView(APIView):
+    permission_classes=[permissions.IsAuthenticated]
+    def post(self, request):
+        plan_id = request.data.get("plan")
+        purchase_token = request.data.get("purchase_token")
+
+        # 1️⃣ Fetch plan info
+        plan = get_object_or_404(PlanModel, id=plan_id)
+        product_id = plan.stripe_product_price_id
+
+        # 2️⃣ Create credentials from service account
+        credentials = service_account.Credentials.from_service_account_file(
+            settings.GOOGLE_SERVICE_ACCOUNT_FILE,
+            scopes=["https://www.googleapis.com/auth/androidpublisher"]
+        )
+        credentials.refresh(Request())
+        access_token = credentials.token
+
+        # 3️⃣ Verify purchase with Google Play API
+        url = (
+            f"https://androidpublisher.googleapis.com/androidpublisher/v3/applications/"
+            f"{settings.GOOGLE_PACKAGE_NAME}/purchases/products/{product_id}/tokens/{purchase_token}"
+        )
+        headers = {"Authorization": f"Bearer {access_token}"}
+        response = requests.get(url, headers=headers)
+        data = response.json()
+
+        # 4️⃣ Check Google’s response
+        if data.get("purchaseState") == 0:  # 0 = purchased
+            user = request.user
+            user.credits += plan.words_or_credits
+            user.save()
+            Revenue.objects.create(
+                    user=user,
+                    plan=plan,
+                    amount=plan.amount,
+                    payment_id=data.get('orderId'),
+                    
+                )
+
+            Invoice.objects.create(
+                invoice_id=f"INV-{data.get('orderId')}",
+                user=user,
+                plan=plan,
+                amount=plan.amount,
+                payment_status="paid",
+            )
+
+            return Response({
+                "status": "success",
+                "message": f"{plan.name} plan activated",
+                "credits_added": plan.words_or_credits
+            })
+
+        return Response({
+            "status": "failed",
+            "message": "Invalid or unverified purchase",
+            "google_response": data
+        }, status=status.HTTP_400_BAD_REQUEST)
+

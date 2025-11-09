@@ -8,6 +8,7 @@ urlpatterns = [
     path('api/v1/accounts/', include('accounts.urls')),
     path('api/v1/',include('ai_model.urls')),
     path('api/v1/plan/',include('plan.urls')),
+    path('api/v1/invoices/',include('invoices.urls')),
 ]
 
 if settings.DEBUG:

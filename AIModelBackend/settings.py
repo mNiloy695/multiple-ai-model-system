@@ -17,7 +17,16 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 from decouple import config
 import os
 
+
+
 AUTH_USER_MODEL = 'accounts.CustomUser'
+
+
+#for google pay billing 
+
+GOOGLE_SERVICE_ACCOUNT_FILE = os.path.join(BASE_DIR, "google_service_account.json")
+GOOGLE_PACKAGE_NAME = "com.yourapp.ai" # your app’s actual package name
+
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
@@ -52,7 +61,10 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt.token_blacklist',
     'channels',
     'plan',
+    'invoices',
 ]
+
+
 
 # Email Settings
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
