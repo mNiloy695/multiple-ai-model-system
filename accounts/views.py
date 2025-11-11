@@ -134,3 +134,73 @@ class GoogleLoginAPIView(APIView):
         tokens = generate_jwt_for_user(user)
 
         return Response(tokens, status=status.HTTP_200_OK)
+
+
+
+
+#forgot password 
+
+from .serializers import ForgotPasswordSerializer
+from django.shortcuts import get_object_or_404
+
+class ForgotPasswordView(APIView):
+    def post(self, request, *args, **kwargs):
+        serializer = ForgotPasswordSerializer(data=request.data)
+        if serializer.is_valid():
+            email = serializer.validated_data['email']
+            try:
+                user = User.objects.get(email=email)
+            except User.DoesNotExist:
+                return Response(
+                    {"error": "No account found with this email."},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+
+            code = randint(100000, 999999)
+            OTP.objects.create(user=user, code=code, type='registration')
+            
+            message = f"Hello! Your temporary code is {code}. It will expire in 10 minutes."
+            send_the_email(
+                subject="Forgot Password 🚀",
+                user_email=email,
+                message=message,
+                message_type='forgot password'
+            )
+            return Response({"success": "OTP sent successfully to your email"}, status=status.HTTP_200_OK)
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        
+
+from .serializers import ResetPasswordSerializer
+
+class ResetView(APIView):
+    def post(self, request, *args, **kwargs):
+        serializer = ResetPasswordSerializer(data=request.data)
+        if serializer.is_valid():
+            email = serializer.validated_data['email']
+            code = serializer.validated_data['code']
+            password = serializer.validated_data['password']
+
+            try:
+                user = User.objects.get(email=email)
+            except User.DoesNotExist:
+                return Response({"error": "User not available on this email"}, status=status.HTTP_404_NOT_FOUND)
+
+            otp = OTP.objects.filter(user=user, code=code).first()
+            if not otp:
+                return Response({"error": "Invalid OTP"}, status=status.HTTP_400_BAD_REQUEST)
+
+            if otp.is_expired():
+                return Response({"error": "OTP expired"}, status=status.HTTP_400_BAD_REQUEST)
+
+            user.set_password(password)
+            user.save()
+            
+            # Delete OTP after successful use
+            otp.delete()
+
+            return Response({"success": "Password reset successfully"}, status=status.HTTP_200_OK)
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+

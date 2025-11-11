@@ -93,3 +93,31 @@ class CreditTransactionSerializer(serializers.ModelSerializer):
     class Meta:
         model = CreditTransaction
         fields = ['id', 'amount', 'transaction_type', 'message', 'created_at']
+
+
+
+class ForgotPasswordSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+
+    def validate(self, attrs):
+        email = attrs.get('email')
+        if not email:
+            raise serializers.ValidationError({"email": "Email is required."})
+        return attrs
+
+class ResetPasswordSerializer(serializers.Serializer):
+    email=serializers.EmailField()
+    code=serializers.CharField()
+    password=serializers.CharField()
+
+    def validate(self, attrs):
+        email=attrs.get('email')
+        code=attrs.get('code')
+        password=attrs.get('password')
+
+        if any(x is None for x in [email,code,password]):
+            raise serializers.ValidationError("Email, code, and password are required.")
+        return attrs
+
+
+        
