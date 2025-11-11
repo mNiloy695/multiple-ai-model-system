@@ -5,7 +5,7 @@ from .summerize import local_summarize
 
 @receiver(post_save, sender=ChatMessage)
 def update_session_summary(sender, instance, created, **kwargs):
-    if not created or instance.sender!="user":
+    if not created:
         return  
 
     session = instance.session

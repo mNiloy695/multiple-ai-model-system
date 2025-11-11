@@ -49,6 +49,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 "user": session.user.id,
                 "model": getattr(session, "model", None),
                 "created_at": session.created_at.isoformat(),
+                 "summary": getattr(session, "summary", ""),
                 "updated_at": session.updated_at.isoformat() if hasattr(session, "updated_at") else None,
                 "total_messages": session.messages.count(),
             }
@@ -149,7 +150,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
             if model_id and api_key:
                 try:
                     ai_response = await database_sync_to_async(gemini_response)(
-                        message_content, model_id, api_key, self.user.id,user_images
+                        message_content, model_id, api_key, self.user.id,user_images,summary=session_data.get("summary")
                     )
                     if ai_response:
                         saved_ai_message = await self.save_message(
@@ -171,7 +172,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
             if model_id and api_key:
                 try:
                     ai_response = await database_sync_to_async(gpt_response)(
-                        message_content, model_id, api_key, self.user.id,user_images,height,width
+                        message_content, model_id, api_key, self.user.id,user_images,height,width,summary=session_data.get("summary")
                     )
                     if ai_response:
                         saved_ai_message = await self.save_message(
@@ -197,10 +198,10 @@ class ChatConsumer(AsyncWebsocketConsumer):
             height=data.get("height",512)
 
             if model_id and api_key:
-                print("i am in the leonardo")
+                # print("i am in the leonardo")
                 try:
                     ai_response=await database_sync_to_async(leonardo_response)(
-                        prompt=message_content,user_id=self.user.id,model_id=model_id,api_key=api_key,num_images=num_images,width=width,height=height
+                        prompt=message_content,user_id=self.user.id,model_id=model_id,api_key=api_key,num_images=num_images,width=width,height=height,summary=session_data.get("summary")
                     )
                     if ai_response:
                         saved_ai_message = await self.save_message(

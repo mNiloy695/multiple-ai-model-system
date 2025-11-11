@@ -13,8 +13,9 @@ def gpt_response(
     images_data_list: list[str] | None = None,
     width=None,
     height=None,
+    summary=None,
     audio_data: str | None = None,
-    max_response_tokens: int = 1000,
+    max_response_tokens: int = 3000,
 ) -> dict:
  
 
@@ -30,8 +31,21 @@ def gpt_response(
         if not credit_account:
             return _error("Credit account not found.")
 
-       
+        context_list=[]
+        if summary:
+            context_list.append(
+                {
+        "role": "system",
+        "content": f"Conversation summary so far: {summary}"
+                }
+            )
         prompt_words = len(message.split())
+
+        context_list.append({
+        "role": "user",
+        "content": message
+        })
+
         if credit_account.credits < prompt_words:
             return _error("Insufficient credits for prompt.")
 
@@ -45,26 +59,26 @@ def gpt_response(
 
         
         if model_type == "chat":
-            text = _chat_request(client, model_id, message, max_response_tokens)
+            text = _chat_request(client, model_id,context_list, max_response_tokens)
 
         elif model_type == "completion":
-            text = _completion_request(client, model_id, message, max_response_tokens)
+            text = _completion_request(client, model_id, context_list, max_response_tokens)
 
         elif model_type == "image_understanding":
-            text = _vision_request(client, model_id, message, images_data_list, max_response_tokens)
+            text = _vision_request(client, model_id, context_list, images_data_list, max_response_tokens)
 
         elif model_type == "image_generation":
-            text, images = _image_request(client, model_id, message,width,
+            text, images = _image_request(client, model_id, context_list,width,
     height)
 
         elif model_type == "audio_generation":
-            text = _audio_request(client, model_id, message, audio_data)
+            text = _audio_request(client, model_id, context_list, audio_data)
 
         elif model_type == "embedding":
-            text = _embedding_request(client, model_id, message)
+            text = _embedding_request(client, model_id, context_list)
 
         elif model_type == "moderation":
-            text = _moderation_request(client, model_id, message)
+            text = _moderation_request(client, model_id, context_list)
 
         else:
             return _error(f"Unsupported model type for '{model_id}'.")
@@ -129,19 +143,21 @@ def _detect_model_type(model_lower: str, images_data_list: list | None, audio_da
 def _chat_request(client, model_id, message, max_tokens):
     response = client.chat.completions.create(
         model=model_id,
-        messages=[{"role": "user", "content": message}],
+        messages=message,
         max_completion_tokens=max_tokens
     )
     return response.choices[0].message.content.strip()
 
 
-def _completion_request(client, model_id, message, max_tokens):
+def _completion_request(client, model_id, context_list, max_tokens):
+    prompt = "\n".join([f"{m['role'].capitalize()}: {m['content']}" for m in context_list])
     response = client.completions.create(
         model=model_id,
-        prompt=message,
+        prompt=prompt,
         max_completion_tokens=max_tokens
     )
     return response.choices[0].text.strip()
+
 
 
 def _vision_request(client, model_id, message, images_data_list, max_tokens):
@@ -151,11 +167,12 @@ def _vision_request(client, model_id, message, images_data_list, max_tokens):
             image_blocks.append({"type": "image_url", "image_url": img})
         else:
             image_blocks.append({"type": "image_url", "image_url": f"data:image/png;base64,{img}"})
+    prompt_text = "\n".join([f"{m['role'].capitalize()}: {m['content']}" for m in message])
 
     response = client.chat.completions.create(
         model=model_id,
         messages=[
-            {"role": "user", "content": [{"type": "text", "text": message}] + image_blocks}
+            {"role": "user", "content": [{"type": "text", "text": prompt_text}] + image_blocks}
         ],
         max_completion_tokens=max_tokens
     )
@@ -175,9 +192,10 @@ def _image_request(client, model_id, prompt, width=None, height=None):
         size = "1024x1024"  # fallback
 
     # Generate image dynamically using any model
+    prompt_text = "\n".join([f"{m['role'].capitalize()}: {m['content']}" for m in prompt])
     response = client.images.generate(
         model=model_id,
-        prompt=prompt,
+        prompt=prompt_text,
         size=size
     )
 
