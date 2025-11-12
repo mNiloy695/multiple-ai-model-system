@@ -25,6 +25,7 @@ class PlanModel(models.Model):
 
 class SubscriptionModel(models.Model):
     plan=models.ForeignKey(PlanModel,related_name='subscription',on_delete=models.SET_NULL,null=True)
+    user=models.ForeignKey(User,on_delete=models.CASCADE,null=True)
     price=models.IntegerField()
     credits_words=models.IntegerField()
     used_words=models.IntegerField()
