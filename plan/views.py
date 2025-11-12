@@ -11,6 +11,7 @@ from rest_framework import viewsets
 from .serializers import PlanSerializer
 
 from django.contrib.auth import get_user_model
+from .models import SubscriptionModel
 User=get_user_model()
 
 
@@ -39,7 +40,20 @@ class CreateCheckoutSessionView(APIView):
             try: 
                 plan=PlanModel.objects.get(id=plan_id)
             except Exception as e:
-                 return Response({"error:":"Plan Model not found"})
+                 return Response({"error:":"Plan Model not found"}) 
+
+            if not plan.subscription_duration=="one-time" and user.subscribed:
+                subscription=SubscriptionModel.objects.filter(user=user,status='active').first()
+                previous_subs_duration_type=subscription.duration_type
+                new_req_subs_duration_type=plan.subscription_duration
+
+                if new_req_subs_duration_type==previous_subs_duration_type:
+                    return Response({"message":f"Your {previous_subs_duration_type} Subscription already active Upgrade it or Wait for expired or Top Up one time credits"})
+                if previous_subs_duration_type=="year" :
+                    return Response({"message":"Go With One Time Top Up or Wait Until the date expire of your subscription"})
+                if previous_subs_duration_type=="month" and new_req_subs_duration_type=='weekly':
+                     return Response({"message":"Go With One Time Top Up or Wait Until the date expire of your subscription"})
+
 
 
             if not plan.stripe_product_price_id:
@@ -57,7 +71,8 @@ class CreateCheckoutSessionView(APIView):
                 metadata={
         "user_id": str(user.id),
         "words": str(plan.words_or_credits),
-        "price_id":str(price_id)
+        "price_id":str(price_id),
+        "subscription_id": subscription.id if subscription else None 
     },
                 success_url="http://127.0.0.1:8081/api/v1/success?session_id={CHECKOUT_SESSION_ID}",
                 cancel_url="http://127.0.0.1:8081/api/v1/cancel",

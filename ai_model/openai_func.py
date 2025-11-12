@@ -1,6 +1,7 @@
 from django.contrib.auth import get_user_model
 from accounts.models import CreditAccount
 from openai import OpenAI
+from .track_used_word_subscription import trackUsedWords
 import base64
 
 User = get_user_model()
@@ -51,6 +52,11 @@ def gpt_response(
 
         credit_account.credits -= prompt_words
         credit_account.save()
+        user.total_token_used+=prompt_words
+        user.save()
+        trackUsedWords(user.id,prompt_words)
+
+        
 
         model_lower = model_id.lower()
         model_type = _detect_model_type(model_lower, images_data_list, audio_data)
@@ -91,6 +97,9 @@ def gpt_response(
 
         credit_account.credits -= response_words
         credit_account.save()
+        user.total_token_used+=response_words
+        user.save()
+        trackUsedWords(user.id,response_words)
 
         return {"text": text, "images": images, "sender": "ai", "error": None}
 
@@ -99,6 +108,7 @@ def gpt_response(
         try:
             if 'credit_account' in locals():
                 credit_account.credits += prompt_words
+                user.total_token_used-=prompt_words
                 credit_account.save()
         except Exception:
             pass

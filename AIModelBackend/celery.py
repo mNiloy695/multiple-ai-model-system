@@ -1,14 +1,16 @@
-# import os
-# from celery import Celery
-# from django.conf import settings
+# myproject/celery.py
+from __future__ import absolute_import, unicode_literals
+import os
+from celery import Celery
+from celery.schedules import crontab
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'AIModelBackend.settings')
 
-# os.environ.setdefault("DJANGO_SETTINGS_MODULE", "AIModelBackend.settings")
-
-# app = Celery("AIModelBackend", broker=settings.CELERY_BROKER_URL)
-
-# # Use Django settings for other configs
-# app.config_from_object("django.conf:settings", namespace="CELERY")
-# app.autodiscover_tasks()
-# @app.task(bind=True)
-# def debug_task(self):
-#     print(f"Request: {self.request!r}") 
+app = Celery('AIModelBackend')
+app.config_from_object('django.conf:settings', namespace='CELERY')
+app.autodiscover_tasks()
+app.conf.beat_schedule = {
+    'update-expired-subscriptions-every-midnight': {
+        'task': 'plan.tasks.update_expired_subscriptions_task',
+        'schedule': crontab(hour=0, minute=0),  # Runs every day at 00:00
+    },
+}
