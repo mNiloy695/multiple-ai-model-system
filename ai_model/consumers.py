@@ -139,7 +139,9 @@ class ChatConsumer(AsyncWebsocketConsumer):
       
         session_data = await self.get_session_data(self.session_id, self.user)
         if not session_data or not session_data.get("model"):
-            return
+            await self.send(text_data=json.dumps({"text": "no available session found"}))
+            await self.close(1000)
+            return 
 
         model = session_data.get("model")
         provider = getattr(model, "provider", "").lower()

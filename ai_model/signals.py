@@ -10,7 +10,7 @@ def update_session_summary(sender, instance, created, **kwargs):
 
     session = instance.session
 
-    messages = session.messages.filter(sender="user").order_by('-created_at')[:20][::-1]
+    messages = session.messages.filter().order_by('-created_at')[:20][::-1]
     combined_text = "\n".join([m.content for m in messages])
 
     

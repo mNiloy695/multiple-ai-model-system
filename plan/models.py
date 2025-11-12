@@ -3,6 +3,12 @@ from django.contrib.auth import get_user_model
 User = get_user_model()
 # Create your models here.
 
+SUBSCRIPTION_DURATION=(
+    ('weekly','weekly'),
+    ('monthly','monthly'),
+    ('yearly','yearly')
+)
+
 class PlanModel(models.Model):
     name=models.CharField(null=True,blank=True)
     stripe_product_price_id=models.CharField(null=True,blank=True)
@@ -10,11 +16,26 @@ class PlanModel(models.Model):
     discription=models.TextField(blank=True,null=True)
     words_or_credits=models.IntegerField(help_text="how much word will be added in user credits ?")
     amount=models.FloatField(default=0)
+    subscription_duration=models.CharField(choices=SUBSCRIPTION_DURATION,null=True)
     created_at=models.DateTimeField(auto_now_add=True)
     updated_at=models.DateTimeField(auto_now=True)
     
     def __str__(self):
         return f'{self.name} {self.plan_code}'
+
+class SubscriptionModel(models.Model):
+    plan=models.ForeignKey(PlanModel,related_name='subscription',on_delete=models.SET_NULL,null=True)
+    price=models.IntegerField()
+    credits_words=models.IntegerField()
+    used_words=models.IntegerField()
+    duration_type=models.CharField(choices=SUBSCRIPTION_DURATION)
+    start_date=models.DateField()
+    expire_date=models.DateField()
+    created_at=models.DateTimeField(auto_now_add=True)
+    updated_at=models.DateTimeField(auto_now=True)
+
+
+
 
 
 class Revenue(models.Model):

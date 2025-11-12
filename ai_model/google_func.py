@@ -7,7 +7,7 @@ import requests, base64
 
 User = get_user_model()
 
-def gemini_response(message, model_id, api_key, user_id, images_data_list=None):
+def gemini_response(message, model_id, api_key, user_id, images_data_list=None,summary=None):
  
     try:
         client = genai.Client(api_key=api_key)
@@ -42,10 +42,20 @@ def gemini_response(message, model_id, api_key, user_id, images_data_list=None):
                 "sender": "system",
                 "error": None
             }
+        contents=[]
+        if summary:
+            contents.append(
+                {
+                    "role":"system",
+                    "parts":[{"text":f"Conversation summary so far: {summary}"}]
+                }
+            )
+        contents.append({"role": "user", "parts": [{"text": message}]})
 
-        contents = [{"role": "user", "parts": [{"text": message}]}]
+        # contents = [{"role": "user", "parts": [{"text": message}]}]
 
         if images_data_list and supports_image:
+            user_index = 1 if summary else 0
             for img in images_data_list:
                 try:
                    
@@ -53,7 +63,7 @@ def gemini_response(message, model_id, api_key, user_id, images_data_list=None):
                         resp = requests.get(img)
                         resp.raise_for_status()
                         img_data = base64.b64encode(resp.content).decode("utf-8")
-                        contents[0]["parts"].append({
+                        contents[user_index]["parts"].append({
                             "inline_data": {
                                 "mime_type": "image/png",
                                 "data": img_data
@@ -62,7 +72,7 @@ def gemini_response(message, model_id, api_key, user_id, images_data_list=None):
 
                     # If it's already base64
                     elif isinstance(img, str):
-                        contents[0]["parts"].append({
+                        contents[user_index]["parts"].append({
                             "inline_data": {
                                 "mime_type": "image/png",
                                 "data": img
@@ -75,7 +85,8 @@ def gemini_response(message, model_id, api_key, user_id, images_data_list=None):
                         "sender": "system",
                         "error": None
                     }
-
+        
+      
         
         response = client.models.generate_content(model=model_id, contents=contents)
 
@@ -83,7 +94,7 @@ def gemini_response(message, model_id, api_key, user_id, images_data_list=None):
         text = getattr(response, "text", "")
         if not text and hasattr(response, "candidates") and response.candidates:
             candidate_parts = response.candidates[0].content.parts
-            text_parts = [p.text for p in candidate_parts if hasattr(p, "text")]
+            text_parts = [getattr(p, "text", "") for p in candidate_parts if getattr(p, "text", None)]
             text = " ".join(text_parts)
 
         response_words = len(text.split())
@@ -100,6 +111,7 @@ def gemini_response(message, model_id, api_key, user_id, images_data_list=None):
 
         images = []
         if supports_image and hasattr(response, "candidates") and response.candidates:
+            
             for part in response.candidates[0].content.parts:
                 if hasattr(part, "inline_data") and hasattr(part.inline_data, "data"):
                     images.append(f"data:image/png;base64,{part.inline_data.data}")
