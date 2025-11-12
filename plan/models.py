@@ -23,9 +23,16 @@ class PlanModel(models.Model):
     def __str__(self):
         return f'{self.name} {self.plan_code}'
 
+SUBSCRIPTION_STATUS=(
+    ('inactive','inactive'),
+    ('active','active'),
+    ('expired','expired')
+)
+
+
 class SubscriptionModel(models.Model):
-    plan=models.ForeignKey(PlanModel,related_name='subscription',on_delete=models.SET_NULL,null=True)
-    user=models.ForeignKey(User,on_delete=models.CASCADE,null=True)
+    plan=models.ForeignKey(PlanModel,related_name='plan_subscription',on_delete=models.SET_NULL,null=True)
+    user=models.ForeignKey(User,on_delete=models.CASCADE,null=True,related_name='subscriptions')
     price=models.IntegerField()
     credits_words=models.IntegerField()
     used_words=models.IntegerField()

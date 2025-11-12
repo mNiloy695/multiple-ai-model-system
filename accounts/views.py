@@ -53,10 +53,11 @@ class LoginView(APIView):
             refresh = RefreshToken.for_user(user)
             return Response({
                 'user':{
-                    'user_id': user.id,
+                'user_id': user.id,
                 'email': user.email,
                 'username': user.username,
                 'is_active': user.is_active,
+                'subscribed':user.subscribed,
                 'is_staff': user.is_staff,
                 'first_name': user.first_name,
                 'last_name': user.last_name,
