@@ -11,6 +11,6 @@ app.autodiscover_tasks()
 app.conf.beat_schedule = {
     'update-expired-subscriptions-every-midnight': {
         'task': 'plan.tasks.update_expired_subscriptions_task',
-        'schedule': crontab(hour=0, minute=0),  # Runs every day at 00:00
+        'schedule': crontab(),  # Runs every day at 00:00 hour=0, minute=0
     },
 }

@@ -78,6 +78,7 @@ def stripe_webhook(request):
                     
                 )
                 if plan.subscription_duration !="one-time":
+                    expire_date=None
                     if plan.subscription_duration=="weekly":
                         expire_date=datetime.now(timezone.utc)+timedelta(days=7)
                     elif plan.subscription_duration=="monthly":
@@ -91,7 +92,7 @@ def stripe_webhook(request):
                     plan=plan,
                     defaults={
                     "price":plan.amount,
-                    "credits_words":plan.words_or_credits+account.credits,
+                    "credits_words":words,
                     "used_words":0,
                     "duration_type":plan.subscription_duration,
                     "start_date":datetime.now(timezone.utc),
@@ -99,10 +100,13 @@ def stripe_webhook(request):
                     
                     }
                     )
+                    print("subs ",subs),
+                    print("created",created)
                    
                     if not created:
+
                         subs.price=plan.amount
-                        subs.credits_words=plan.words_or_credits+account.credits
+                        subs.credits_words+=words
                         subs.used_words=0
                         subs.duration_type=plan.subscription_duration
                         subs.start_date=datetime.now(timezone.utc)
@@ -134,6 +138,7 @@ def stripe_webhook(request):
    
 
         return JsonResponse({'status': 'success'})
+    
 
     except ValueError as e:
       

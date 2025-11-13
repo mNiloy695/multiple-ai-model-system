@@ -69,7 +69,7 @@ class CreditTransaction(models.Model):
     credit_account = models.ForeignKey(CreditAccount, on_delete=models.CASCADE,related_name='transactions')
     amount = models.IntegerField()
     transaction_type = models.CharField(max_length=10, choices=[('add', 'Add'), ('deduct', 'Deduct'),('refund', 'Refund'),('bonus', 'Bonus')])
-    # message = models.TextField(blank=True, null=True)
+    message = models.TextField(blank=True, null=True)
     # used_credits = models.IntegerField(default=0)
   
     created_at = models.DateTimeField(auto_now_add=True)
