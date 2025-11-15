@@ -49,8 +49,14 @@ def stripe_webhook(request):
                 return JsonResponse({'error': 'Invalid words value'}, status=400)
             
             account = CreditAccount.objects.filter(user_id=user_id).first()
+            # if not account:
+            #   return JsonResponse({'error': 'Credit Account Not Found'}, status=404)
+
             if not account:
-              return JsonResponse({'error': 'Credit Account Not Found'}, status=404)
+                user=User.objects.get(id=user_id)
+                account=CreditAccount.objects.create(
+                    user=user
+                )
 
         
             updated = CreditAccount.objects.filter(user_id=user_id).update(

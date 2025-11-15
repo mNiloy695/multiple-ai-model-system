@@ -142,49 +142,118 @@ from django.shortcuts import get_object_or_404
 import requests
 from invoices.models import InvoiceModel as Invoice
 
+from .serializers import SubscriptionSerializer
+from datetime import datetime,timezone,timedelta
 
+from accounts.models import CreditAccount,CreditTransaction
+import random
 class VerifyGooglePurchaseView(APIView):
     permission_classes=[permissions.IsAuthenticated]
     def post(self, request):
         plan_id = request.data.get("plan")
         purchase_token = request.data.get("purchase_token")
+        user=request.user
 
         # 1️⃣ Fetch plan info
         plan = get_object_or_404(PlanModel, id=plan_id)
+        try:
+            plan=PlanModel.objects.get(id=plan_id)
+        except PlanModel.DoesNotExist:
+            return Response({
+                "error":"plan model not found"
+            })
+        
         product_id = plan.stripe_product_price_id
 
         # 2️⃣ Create credentials from service account
-        credentials = service_account.Credentials.from_service_account_file(
-            settings.GOOGLE_SERVICE_ACCOUNT_FILE,
-            scopes=["https://www.googleapis.com/auth/androidpublisher"]
-        )
-        credentials.refresh(Request())
-        access_token = credentials.token
-
-        # 3️⃣ Verify purchase with Google Play API
-        url = (
-            f"https://androidpublisher.googleapis.com/androidpublisher/v3/applications/"
-            f"{settings.GOOGLE_PACKAGE_NAME}/purchases/products/{product_id}/tokens/{purchase_token}"
-        )
-        headers = {"Authorization": f"Bearer {access_token}"}
-        response = requests.get(url, headers=headers)
-        data = response.json()
+        # credentials = service_account.Credentials.from_service_account_file(
+        #     settings.GOOGLE_SERVICE_ACCOUNT_FILE,
+        #     scopes=["https://www.googleapis.com/auth/androidpublisher"]
+        # )
+        # credentials.refresh(Request())
+        # access_token = credentials.token
+        # # 3️⃣ Verify purchase with Google Play API
+        # url = (
+        #     f"https://androidpublisher.googleapis.com/androidpublisher/v3/applications/"
+        #     f"{settings.GOOGLE_PACKAGE_NAME}/purchases/products/{product_id}/tokens/{purchase_token}"
+        # )
+        # headers = {"Authorization": f"Bearer {access_token}"}
+        # response = requests.get(url, headers=headers)
+        # data = response.json()
+        data=request.data
+        # orderId=data.get('OrderId')
+        orderId=random.randint(100000,999999)
 
         # 4️⃣ Check Google’s response
         if data.get("purchaseState") == 0:  # 0 = purchased
-            user = request.user
-            user.credits += plan.words_or_credits
-            user.save()
+            try:
+                credit_account=CreditAccount.objects.get(user=user)
+            except CreditAccount.DoesNotExist:
+                credit_account=CreditAccount.objects.create(
+                    user=user
+                )
+
+            credit_account.credits += plan.words_or_credits
+            credit_account.save()
+            if credit_account:
+                CreditTransaction.objects.create(
+                    credit_account=credit_account,
+                    amount=plan.words_or_credits,
+                    transaction_type='add',
+                    message=f'{plan.words_or_credits} credits added successfully in you account'
+
+                )
+
+
+            if plan.subscription_duration !="one-time":
+                    expire_date=None
+                    if plan.subscription_duration=="weekly":
+                        expire_date=datetime.now(timezone.utc)+timedelta(days=7)
+                    elif plan.subscription_duration=="monthly":
+                        expire_date=datetime.now(timezone.utc)+timedelta(days=30)
+                    elif plan.subscription_duration=="yearly":
+                        expire_date=datetime.now(timezone.utc)+timedelta(days=365)
+
+                    # subscription_id=metadata.get('subscription_id')
+                    subs,created=SubscriptionModel.objects.get_or_create(
+                    user=user,
+                    plan=plan,
+                    defaults={
+                    "price":plan.amount,
+                    "credits_words":plan.words_or_credits,
+                    "used_words":0,
+                    "duration_type":plan.subscription_duration,
+                    "start_date":datetime.now(timezone.utc),
+                    "expire_date":expire_date,
+                    
+                    }
+                    )
+                    print("subs ",subs),
+                    print("created",created)
+                   
+                    if not created:
+
+                        subs.price=plan.amount
+                        subs.credits_words+=plan.words_or_credits
+                        subs.used_words=0
+                        subs.duration_type=plan.subscription_duration
+                        subs.start_date=datetime.now(timezone.utc)
+                        subs.expire_date=expire_date
+                        
+                        subs.save()
+                    user.subscribed=True
+                    user.save()
+            
             Revenue.objects.create(
                     user=user,
                     plan=plan,
                     amount=plan.amount,
-                    payment_id=data.get('orderId'),
+                    payment_id=orderId
                     
                 )
 
             Invoice.objects.create(
-                invoice_id=f"INV-{data.get('orderId')}",
+                invoice_id=f"INV-{orderId}",
                 user=user,
                 plan=plan,
                 amount=plan.amount,
@@ -203,3 +272,18 @@ class VerifyGooglePurchaseView(APIView):
             "google_response": data
         }, status=status.HTTP_400_BAD_REQUEST)
 
+
+
+
+
+class SubscriptionView(viewsets.ModelViewSet):
+    queryset=SubscriptionModel.objects.prefetch_related('user').select_related('plan').order_by("-created_at")
+    serializer_class=SubscriptionSerializer
+    permission_classes=[permissions.IsAuthenticated]
+
+
+
+    def get_queryset(self):
+        if self.request.user.is_staff:
+            return self.queryset.all()
+        return self.queryset.filter(user=self.request.user)

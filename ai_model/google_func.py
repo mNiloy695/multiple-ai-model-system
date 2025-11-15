@@ -81,9 +81,9 @@ def gemini_response(
             if hasattr(response, "candidates") and response.candidates:
                  for part in response.candidates[0].content.parts:
                     if hasattr(part, "inline_data") and part.inline_data:
-                       file_name = f"test_{user_id}.png"
-                       with open(file_name, "wb") as f:
-                             f.write(part.inline_data.data)
+                    #    file_name = f"test_{user_id}.png"
+                    #    with open(file_name, "wb") as f:
+                    #          f.write(part.inline_data.data)
                        b64_data = base64.b64encode(part.inline_data.data).decode("utf-8")
                        images.append(f"data:{part.inline_data.mime_type};base64,{b64_data}")
                        

@@ -32,6 +32,7 @@ class CustomUser(AbstractUser):
     subscribed=models.BooleanField(default=False,null=True,blank=True)
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = []
+    
 
     objects = CustomUserManager()
 

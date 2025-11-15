@@ -22,6 +22,7 @@ class PlanModel(models.Model):
     created_at=models.DateTimeField(auto_now_add=True)
     updated_at=models.DateTimeField(auto_now=True)
     
+    
     def __str__(self):
         return f'{self.name} {self.plan_code}'
   
@@ -53,6 +54,9 @@ class SubscriptionModel(models.Model):
     @property
     def is_expired(self):
         return self.expire_date<datetime.now(timezone.utc)
+    
+    
+    
     
    
 

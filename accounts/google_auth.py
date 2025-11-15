@@ -37,9 +37,11 @@ def generate_jwt_for_user(user):
                 'username': user.username,
                 'is_active': user.is_active,
                 'is_staff': user.is_staff,
+                'subscribed':user.subscribed,
                 'first_name': user.first_name,
                 'last_name': user.last_name,
-                'credits_balance': user.creditaccount.credits if hasattr(user, 'creditaccount') else 0
+                'credits_balance': user.creditaccount.credits if hasattr(user, 'creditaccount') else 0,
+                "total_token_used":user.total_token_used
                 
                 },
                 
