@@ -12,3 +12,4 @@ class AdminChatSession(admin.ModelAdmin):
     list_display=['id','summary','user']
 
 
+admin.site.register(ChatMessage)

@@ -6,6 +6,43 @@ import base64
 
 User = get_user_model()
 
+# Cache to avoid calling OpenAI every time
+MODEL_CACHE = {}
+
+def get_model_limits(model_name,client):
+    
+    # Return cached limits
+    if model_name in MODEL_CACHE:
+        return MODEL_CACHE[model_name]
+
+    try:
+        model_info = client.models.retrieve(model_name)
+
+        input_limit = model_info.capabilities.get("input_tokens", 16000)
+        output_limit = model_info.capabilities.get("output_tokens", 4096)
+
+        MODEL_CACHE[model_name] = {
+            "input": input_limit,
+            "output": output_limit
+        }
+
+        return MODEL_CACHE[model_name]
+
+    except Exception:
+        # fallback for unknown future models
+        return {
+            "input": 16000,
+            "output": 4096
+        }
+
+
+def get_dynamic_max_tokens(model_name,client,requested_max):
+    limits = get_model_limits(model_name,client=client)
+    output_limit = limits["output"]
+
+    # Clamp to the model's limit
+    return min(requested_max, output_limit)
+
 def gpt_response(
     message: str,
     model_id: str,
@@ -16,14 +53,15 @@ def gpt_response(
     height=None,
     summary=None,
     audio_data: str | None = None,
-    max_response_tokens: int = 3000,
+    max_response_tokens: int = 0,
+    num_images=1,
+
 ) -> dict:
  
 
     try:
         client = OpenAI(api_key=api_key)
 
-      
         user = User.objects.filter(id=user_id).first()
         if not user:
             return _error("User not found.")
@@ -47,8 +85,12 @@ def gpt_response(
         "content": message
         })
 
+        
+
         if credit_account.credits < prompt_words:
             return _error("Insufficient credits for prompt.")
+        
+
 
         credit_account.credits -= prompt_words
         credit_account.save()
@@ -56,10 +98,40 @@ def gpt_response(
         user.save()
         trackUsedWords(user.id,prompt_words)
 
+        max_response_tokens = int(credit_account.credits * 1.33)
+
+        if max_response_tokens<=0:
+            return _error(f"You don't have enough credit's to gate response")
+        print(max_response_tokens)
+        
+        max_response_tokens=get_dynamic_max_tokens(model_name=model_id,client=client,requested_max=max_response_tokens)
+        print(max_response_tokens)
+        
+
+       
+
         
 
         model_lower = model_id.lower()
         model_type = _detect_model_type(model_lower, images_data_list, audio_data)
+        print(model_type)
+
+        if model_type=="image_generation":
+            base_cost=500 #words
+            num_images =1
+            total_words=base_cost*num_images
+
+            if total_words>credit_account.credits:
+                credit_account.credits+=prompt_words
+                credit_account.save()
+                
+                   
+                return _error(f"You Don't have enought credits to generate image")
+            credit_account.credits-=total_words
+            credit_account.save()
+            trackUsedWords(user.id,prompt_words)
+        
+            
 
         text, images = "", []
 
@@ -75,7 +147,7 @@ def gpt_response(
 
         elif model_type == "image_generation":
             text, images = _image_request(client, model_id, context_list,width,
-    height)
+    height,num_images=num_images)
 
         elif model_type == "audio_generation":
             text = _audio_request(client, model_id, context_list, audio_data)
@@ -189,7 +261,7 @@ def _vision_request(client, model_id, message, images_data_list, max_tokens):
     return response.choices[0].message.content.strip()
 
 
-def _image_request(client, model_id, prompt, width=None, height=None):
+def _image_request(client, model_id, prompt, width=None, height=None,num_images=1):
     """
     Generate an image using any OpenAI image model.
     """
@@ -202,11 +274,13 @@ def _image_request(client, model_id, prompt, width=None, height=None):
         size = "1024x1024"  # fallback
 
     # Generate image dynamically using any model
+
     prompt_text = "\n".join([f"{m['role'].capitalize()}: {m['content']}" for m in prompt])
     response = client.images.generate(
         model=model_id,
         prompt=prompt_text,
-        size=size
+        size=size,
+        n=num_images
     )
 
     images = [img.url for img in response.data]

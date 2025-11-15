@@ -22,6 +22,7 @@ from .google_func import gemini_response
 
 
 class ChatConsumer(AsyncWebsocketConsumer):
+    # max_message_size = 10 * 1024 * 1024 
     @database_sync_to_async
     def get_session_messages(self, session_id, user):
         session = ChatSession.objects.filter(id=session_id, user=user).prefetch_related("messages").first()
@@ -128,6 +129,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
         user_images = data.get("images", [])
         height=data.get('height')
         width=data.get('width')
+        num_images=data.get('num_images')
 
         
         saved_message = await self.save_message(
@@ -152,7 +154,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
             if model_id and api_key:
                 try:
                     ai_response = await database_sync_to_async(gemini_response)(
-                        message_content, model_id, api_key, self.user.id,user_images,summary=session_data.get("summary")
+                        message_content, model_id, api_key, self.user.id,user_images,summary=session_data.get("summary"),num_images=num_images
                     )
                     if ai_response:
                         saved_ai_message = await self.save_message(
@@ -174,7 +176,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
             if model_id and api_key:
                 try:
                     ai_response = await database_sync_to_async(gpt_response)(
-                        message_content, model_id, api_key, self.user.id,user_images,height,width,summary=session_data.get("summary")
+                        message_content, model_id, api_key, self.user.id,user_images,height,width,summary=session_data.get("summary"),num_images=num_images
                     )
                     if ai_response:
                         saved_ai_message = await self.save_message(
