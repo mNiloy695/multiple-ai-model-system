@@ -90,11 +90,14 @@ def wavespeed_ai_call(model_id, api_key, payload=None, poll_interval=0.5,user_id
             credit_account.credits-=image_deduct_credit
             credit_account.save()
             user.total_token_used+=image_deduct_credit
+            trackUsedWords(user_id=user_id,words=image_deduct_credit)
             output_url = result["outputs"][0]
             elapsed = time.time() - start_time
             # return f"{model_id} completed in {elapsed:.2f}s. Output URL: {output_url}"
-            images=output_url
-            return f"Image generated successfully ({payload.get('size')}) using {model_id}.",images
+            return {
+            "text": f"Image generated successfully ({payload.get('size')}) using {model_id}.",
+            "images": [output_url]
+        }
         elif status == "failed":
             return f"{model_id} failed: {result.get('error')}"
 
