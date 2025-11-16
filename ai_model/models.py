@@ -6,12 +6,13 @@ class AIModelInfo(models.Model):
     PROVIDER_CHOICES = [
         ('openai', 'OpenAI'),
         ('leonardo', 'Leonardo AI'),
-        ('huggingface', 'Hugging Face'),
-        ('anthropic', 'Anthropic'),
-        ('google', 'Google DeepMind'),
-        ('mistral', 'Mistral AI'),
-        ('meta', 'Meta AI'),
-        ('custom', 'Custom / Self-Hosted'),
+        ('wavespeedai','Wavespeed AI'),
+        # ('huggingface', 'Hugging Face'),
+        # ('anthropic', 'Anthropic'),
+        ('google', 'Google'),
+        # ('mistral', 'Mistral AI'),
+        # ('meta', 'Meta AI'),
+        # ('custom', 'Custom / Self-Hosted'),
     ]
 
     name = models.CharField(max_length=255, help_text="Name of the AI model, e.g., GPT-4 or Claude 3.")

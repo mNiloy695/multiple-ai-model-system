@@ -269,7 +269,7 @@ def _image_request(client, model_id, prompt, width=None, height=None,num_images=
     size = f"{width}x{height}" if width and height else "1024x1024"
 
     # Optionally: define some common allowed sizes
-    common_sizes = {"256x256", "512x512", "1024x1024", "1024x1792", "1792x1024", "2048x2048"}
+    common_sizes = {"256x256", "512x512", "1024x1024", "1024x1792"}  #,"1792x1024", "2048x2048"}
     if size not in common_sizes:
         size = "1024x1024"  # fallback
 

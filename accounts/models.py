@@ -77,3 +77,15 @@ class CreditTransaction(models.Model):
 
     def __str__(self):
         return f"{self.transaction_type} {self.amount} credits for {self.credit_account.user.email} on {self.created_at}"
+    
+
+#profile model
+
+
+class UserProfile(models.Model):
+    user=models.OneToOneField(CustomUser,on_delete=models.CASCADE,related_name='profile')
+    first_name=models.CharField(max_length=50)
+    last_name=models.CharField(max_length=50)
+    avatar=models.ImageField(upload_to='profile',null=True,blank=True)
+    created_at=models.DateTimeField(auto_now_add=True)
+    updated_at=models.DateTimeField(auto_now=True)

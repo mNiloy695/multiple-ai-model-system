@@ -206,3 +206,14 @@ class ResetView(APIView):
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+
+
+
+from rest_framework import viewsets,permissions
+from .models import UserProfile
+from .serializers import UserProfileSerializer
+
+class ProfileView(viewsets.ModelViewSet):
+    queryset=UserProfile.objects.select_related('user',"user__creditaccount")
+    permission_classes=[permissions.IsAuthenticated]
+    serializer_class=UserProfileSerializer

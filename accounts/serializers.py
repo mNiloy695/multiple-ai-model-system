@@ -120,4 +120,25 @@ class ResetPasswordSerializer(serializers.Serializer):
         return attrs
 
 
-        
+
+
+
+from .models import UserProfile
+class UserProfileSerializer(serializers.ModelSerializer):
+    user_details=serializers.SerializerMethodField(read_only=True)
+    class Meta:
+        model=UserProfile
+        fields=['user','user_details','first_name','last_name','created_at','updated_at']
+    
+    def get_user_details(self,obj):
+        user=obj.user
+        credit = getattr(user.creditaccount, 'credits', 0)
+        return {
+            'id':user.id,
+            "username":user.username,
+            "email":user.email,
+            "total_token_used":user.total_token_used,
+            "words":credit
+            
+        }
+

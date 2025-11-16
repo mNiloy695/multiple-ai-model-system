@@ -15,7 +15,7 @@ User = get_user_model()
 from .leonardo import leonardo_response
 from .openai_func  import gpt_response
 from .google_func import gemini_response
-
+from .wavespeedai import wavespeed_ai_call
 
 
 
@@ -219,6 +219,54 @@ class ChatConsumer(AsyncWebsocketConsumer):
                             await self.send(text_data=json.dumps({"type": "new_message", "message": saved_ai_message}))
                 except Exception as e:
                     await self.send(text_data=json.dumps({"type": "error", "message": f"AI error: {str(e)}"},ensure_ascii=False))
+
+
+
+        elif provider=="wavespeedai":
+            model_id=getattr(model,"model_id",None)
+            api_key=getattr(model,"model_id",None)
+            width=data.get("width",1024)
+            height=data.get('height',1024)
+            num_images=data.get('num_images',1)
+            strength=data.get("strength",0.8)
+            num_inference_steps=data.get("num_inference_steps",28)
+            seed=data.get('seed',-1)
+            guidance_scale=data.get("guidance_scale",3.5)
+            output_format=data.get("output_format","jpeg")
+
+
+            if model_id and api_key:
+                payload = {
+                      "prompt":f"A futuristic city skyline at sunset",  # <-- your prompt here
+                      "strength":int(strength),
+                      "size": f"{height}*{width}",
+                      "num_inference_steps":int(num_inference_steps),
+                      "seed": int(seed),
+                      "guidance_scale":float(guidance_scale),
+                      "num_images":int(num_images),
+                      "output_format":output_format,
+                      "enable_base64_output": False,
+                      "enable_sync_mode": False
+    }
+                try:
+                    ai_response=await database_sync_to_async(wavespeed_ai_call)(
+                        model_id=model_id,
+                        api_key=api_key,
+                        payload=payload,
+                        user_id=self.user.id
+                    )
+                    if ai_response:
+                        saved_ai_message = await self.save_message(
+                            self.session_id,
+                            self.user,
+                            "ai",
+                            content = ai_response.get("text") or ai_response.get("content") or ai_response.get("error") or "",
+                            images=ai_response.get("images", [])
+                        )
+                except Exception as e:
+                      await self.send(text_data=json.dumps({"type": "error", "message": f"AI error: {str(e)}"},ensure_ascii=False))
+
+
                 
         else:
             await self.send(text_data=json.dumps({"type": "error", "message": f"Unsupported provider: {provider}"},ensure_ascii=False))
