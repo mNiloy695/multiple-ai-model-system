@@ -16,7 +16,8 @@ from .leonardo import leonardo_response
 from .openai_func  import gpt_response
 from .google_func import gemini_response
 from .wavespeedai import wavespeed_ai_call
-
+from PIL import Image
+from io import BytesIO
 
 
 
@@ -178,14 +179,28 @@ class ChatConsumer(AsyncWebsocketConsumer):
                     ai_response = await database_sync_to_async(gpt_response)(
                         message_content, model_id, api_key, self.user.id,user_images,height,width,summary=session_data.get("summary"),num_images=num_images
                     )
+
+                    
                     if ai_response:
+                        image_blocks=[]
+                        images=ai_response.get("images", [])
+                        images = [img for img in images if img.startswith("http")]
+                        # print(images)
+                        # if images:
+                        #     for img in images:
+                        #         png_bytes = base64.b64decode(img)
+                        #         image = Image.open(BytesIO(png_bytes))
+                        #         buffered = BytesIO()
+                        #         image.save(buffered, format="WEBP", quality=80)
+                        #         webp_b64 = base64.b64encode(buffered.getvalue()).decode()
+                        #         image_blocks.append(webp_b64)
                         saved_ai_message = await self.save_message(
                             self.session_id,
                             self.user,
                             "ai",
                             content = ai_response.get("text") or ai_response.get("content") or ai_response.get("error") or "",
 
-                            images=ai_response.get("images", [])
+                            images=images
                         )
                         if saved_ai_message:
                             await self.send(text_data=json.dumps({"type": "new_message", "message": saved_ai_message},ensure_ascii=False))

@@ -141,4 +141,8 @@ class UserProfileSerializer(serializers.ModelSerializer):
             "words":credit
             
         }
+    
+    # def update(self, instance, validated_data):
+
+        
 

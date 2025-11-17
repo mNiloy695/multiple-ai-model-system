@@ -10,7 +10,7 @@ app.config_from_object('django.conf:settings', namespace='CELERY')
 app.autodiscover_tasks()
 app.conf.beat_schedule = {
     'update-expired-subscriptions-every-midnight': {
-        'task': 'plan.tasks.update_expired_subscriptions_task',
+        'task': 'plan.tasks.update_expired_subscriptions',
         'schedule': crontab(),  # Runs every day at 00:00 hour=0, minute=0
     },
 }

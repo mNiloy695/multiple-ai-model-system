@@ -3,7 +3,7 @@ import json
 import time
 from django.contrib.auth import get_user_model
 from accounts.models import CreditAccount
-from track_used_word_subscription import trackUsedWords
+from .track_used_word_subscription import trackUsedWords
 User=get_user_model()
 
 
