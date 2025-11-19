@@ -13,6 +13,7 @@ class AIModelSerializer(serializers.ModelSerializer):
 
         if images_generating_models and (base_cost is None or base_cost<=0):
             raise serializers.ValidationError("Base cost must be greater than 0 for image generating models.")
+        return attrs
 
 class AIModelLimitedSerializer(serializers.ModelSerializer):
     class Meta:

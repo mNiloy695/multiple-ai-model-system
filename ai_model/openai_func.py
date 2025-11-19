@@ -76,14 +76,14 @@ def gpt_response(
             context_list.append(
                 {
         "role": "system",
-        "content": f"Conversation summary so far: {summary}"
+        "content": f"Conversation summary so and listen don't show or response this summary to user just use this to track then context much better way : {summary}"
                 }
             )
         prompt_words = len(message.split())
 
         context_list.append({
         "role": "user",
-        "content": message
+        "content": f'if user are not an image model and user say you to generate image and if you can not analize image but user say you for analize image just give them proper response that you can not do this and just suggest to user dal-e-3 for generating image  and here the promp that user says: {message}'
         })
 
         
@@ -183,6 +183,11 @@ def gpt_response(
             if 'credit_account' in locals():
                 credit_account.credits += prompt_words
                 user.total_token_used-=prompt_words
+                if model_type=="image_generation":
+                    total_cost=base_cost*num_images
+                    credit_account.credits += total_cost
+                    user.total_token_used-=total_cost
+                user.save()
                 credit_account.save()
         except Exception:
             pass

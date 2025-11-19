@@ -255,6 +255,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
 
             if model_id and api_key:
+                base_cost=getattr(model,"base_cost",500)
                 payload = {
                       "prompt":f"A futuristic city skyline at sunset",  # <-- your prompt here
                       "strength":int(strength),
@@ -272,7 +273,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
                         model_id=model_id,
                         api_key=api_key,
                         payload=payload,
-                        user_id=self.user.id
+                        user_id=self.user.id,
+                        base_cost=base_cost
                     )
                     if ai_response:
                         saved_ai_message = await self.save_message(

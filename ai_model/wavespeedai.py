@@ -7,15 +7,15 @@ from .track_used_word_subscription import trackUsedWords
 User=get_user_model()
 
 
-CREDIT_DIDUCTION={
-    "flux-schnell":50,
-    "flux-dev-ultra-fast":70,
-    "flux-schnell-lora":70,
-    "flux-dev-lora-ultra-fast":75,
-    "flux-dev-lora":150,
-    "chroma":150
-}
-def wavespeed_ai_call(model_id, api_key, payload=None, poll_interval=0.5,user_id=None):
+# CREDIT_DIDUCTION={
+#     "flux-schnell":50,
+#     "flux-dev-ultra-fast":70,
+#     "flux-schnell-lora":70,
+#     "flux-dev-lora-ultra-fast":75,
+#     "flux-dev-lora":150,
+#     "chroma":150
+# }
+def wavespeed_ai_call(model_id, api_key, payload=None, poll_interval=0.5,user_id=None,base_cost=500):
  
     if payload is None:
         payload = {
@@ -39,9 +39,13 @@ def wavespeed_ai_call(model_id, api_key, payload=None, poll_interval=0.5,user_id
     credit_account=CreditAccount.objects.filter(user=user).first()
 
     if not credit_account:
-        return {"error":"The user not have any account"}
+        credit_account=CreditAccount.objects.create(user=user,credits=0) 
     
-    image_deduct_credit=CREDIT_DIDUCTION.get(model_id)*payload.get('num_images')
+    
+    # image_deduct_credit=CREDIT_DIDUCTION.get(model_id)*payload.get('num_images')
+    num_images=payload.get('num_images',1)
+    Base_cost=base_cost
+    image_deduct_credit=Base_cost*num_images
     
     credits=credit_account.credits
     if credits<image_deduct_credit:
@@ -80,12 +84,13 @@ def wavespeed_ai_call(model_id, api_key, payload=None, poll_interval=0.5,user_id
             credit_account.credits-=image_deduct_credit
             credit_account.save()
             user.total_token_used+=image_deduct_credit
+            user.save()
             trackUsedWords(user_id=user_id,words=image_deduct_credit)
             output_url = result["outputs"][0]
             elapsed = time.time() - start_time
            
             return {
-            "text": f"Image generated successfully ({payload.get('size')}) using {model_id}.",
+            "text": f"Image generated successfully ({payload.get('size')}) in {elapsed:.2f} seconds.",
             "images": [output_url]
         }
         elif status == "failed":

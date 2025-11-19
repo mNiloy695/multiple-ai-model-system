@@ -11,3 +11,27 @@
 #         print("-", m.id)
 # except Exception as e:
 #     print("Error:", e)
+
+
+from google import genai
+from google.genai import types
+
+# Your API key
+API_KEY = "AIzaSyCha7ecDnUQ1BSjlYl-8MKp2U11FtqH108"
+
+# Initialize client
+client = genai.Client(
+    api_key=API_KEY,
+    # http_options=types.HttpOptions(api_version="v1")  # always use v1
+)
+
+# Fetch all models
+models = client.models.list()
+
+# Print details
+for m in models:
+    print("Model Name:", m.name)
+    print("Supported Methods:", getattr(m, "supported_generation_methods", []))
+    print("Input Modalities:", getattr(m, "input_modalities", []))
+    print("Output Modalities:", getattr(m, "output_modalities", []))
+    print("-" * 50)

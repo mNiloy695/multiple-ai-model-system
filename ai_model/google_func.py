@@ -6,7 +6,7 @@ from .track_used_word_subscription import trackUsedWords
 from django.core.files.base import ContentFile
 import base64
 
-User = get_user_model()
+from .image_to_url_save import download_and_store_webp
 
 
 User = get_user_model()
@@ -87,7 +87,7 @@ def gemini_response(
                     #          f.write(part.inline_data.data)
                        b64_data = base64.b64encode(part.inline_data.data).decode("utf-8")
                        images.append(f"data:{part.inline_data.mime_type};base64,{b64_data}")
-                       
+            images=download_and_store_webp(images)
             print("image URLs:", images)
 
 
@@ -111,9 +111,10 @@ def gemini_response(
         if summary:
             contents.append({
                 "role": "user",
-                "parts": [{"text": f"Conversation summary so far: {summary}"}]
+                "parts": [{"text": f"Conversation summary so far don't show this on error or response just use it for giving beeter response to user if needed: {summary}"}]
             })
 
+        message=f"user says: {message}"
         contents.append({"role": "user", "parts": [{"text": message}]})
 
         # Add inline images if supported
@@ -130,8 +131,18 @@ def gemini_response(
 
         # Generate text response
         response = client.models.generate_content(model=model_id, contents=contents)
+        text = _extract_candidate_text(response)
+        response_words = len(text.split())
+        if response_words > credit_account.credits:
+            allowed = credit_account.credits
+            text = " ".join(text.split()[:allowed])
+            response_words = allowed
 
-        text = getattr(response, "text", "") or _extract_candidate_text(response)
+        credit_account.credits -= response_words
+        credit_account.save()
+        user.total_token_used+=response_words
+        user.save()
+        trackUsedWords(user.id,response_words)
 
         # Extract inline images
         if hasattr(response, "candidates") and response.candidates:
@@ -147,6 +158,10 @@ def gemini_response(
             if 'credit_account' in locals():
                 credit_account.credits += prompt_words
                 user.total_token_used -= prompt_words
+                if is_image_generation:
+                    credit_account.credits += total_cost
+                    user.total_token_used -= total_cost
+                user.save()
                 credit_account.save()
         except:
             pass
