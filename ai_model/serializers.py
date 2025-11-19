@@ -6,12 +6,20 @@ class AIModelSerializer(serializers.ModelSerializer):
         model=AIModelInfo
         fields='__all__'
         read_only_fields=['created_at','updated_at']
+    
+    def validate(self, attrs):
+        images_generating_models=attrs.get('images_generating_models',False)
+        base_cost=attrs.get('base_cost',None)
+
+        if images_generating_models and (base_cost is None or base_cost<=0):
+            raise serializers.ValidationError("Base cost must be greater than 0 for image generating models.")
 
 class AIModelLimitedSerializer(serializers.ModelSerializer):
     class Meta:
         model=AIModelInfo
-        fields=['id','name','model_id','created_at','description','base_url']
+        fields=['id','name','model_id','created_at','description','base_url','base_cost','images_generating_models']
         read_only_fields=['created_at','updated_at']
+
 
 
 class ChatMessageSerializer(serializers.ModelSerializer):

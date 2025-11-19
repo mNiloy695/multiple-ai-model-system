@@ -17,7 +17,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 from decouple import config
 import os
 
-
+BASE_URL = config('BASE_URL', default='http://localhost:8000')
 
 AUTH_USER_MODEL = 'accounts.CustomUser'
 

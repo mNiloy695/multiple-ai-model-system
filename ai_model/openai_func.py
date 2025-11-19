@@ -3,7 +3,7 @@ from accounts.models import CreditAccount
 from openai import OpenAI
 from .track_used_word_subscription import trackUsedWords
 import base64
-
+from .image_to_url_save import download_and_store_webp
 User = get_user_model()
 
 # Cache to avoid calling OpenAI every time
@@ -55,6 +55,7 @@ def gpt_response(
     audio_data: str | None = None,
     max_response_tokens: int = 0,
     num_images=1,
+    base_cost=500,
 
 ) -> dict:
  
@@ -117,7 +118,8 @@ def gpt_response(
         print(model_type)
 
         if model_type=="image_generation":
-            base_cost=500 #words
+        
+            base_cost=base_cost #words
             num_images =1
             total_words=base_cost*num_images
 

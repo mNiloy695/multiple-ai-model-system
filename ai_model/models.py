@@ -36,6 +36,8 @@ class AIModelInfo(models.Model):
     
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    images_generating_models=models.BooleanField(default=False,help_text="Indicates if the model supports image generation")
+    base_cost=models.IntegerField(default=0,help_text="base cost in terms of words or credits for using this model")
 
 
     def __str__(self):

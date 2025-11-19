@@ -11,5 +11,5 @@ urlpatterns = [
     path('api/v1/invoices/',include('invoices.urls')),
 ]
 
-if settings.DEBUG:
+if settings.DEBUG or True:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

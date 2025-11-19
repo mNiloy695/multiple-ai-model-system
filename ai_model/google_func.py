@@ -20,6 +20,7 @@ def gemini_response(
     images_data_list=None,
     summary=None,
     num_images=1,  # Always 1
+    base_cost=500,  # Default base cost
 ):
     try:
         client = genai.Client(api_key=api_key)
@@ -53,7 +54,7 @@ def gemini_response(
 
         if is_image_generation:
             num_images = 1
-            base_cost = 500
+            base_cost = base_cost  # words
             total_cost = base_cost * num_images
 
             if credit_account.credits < total_cost:

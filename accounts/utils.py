@@ -11,4 +11,4 @@ def send_the_email(subject,user_email,message,message_type='registration'):
             recipient_list=[user_email],
             # fail_silently=False,
         )
- 
+

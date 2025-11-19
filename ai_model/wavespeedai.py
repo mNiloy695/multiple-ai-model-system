@@ -16,17 +16,7 @@ CREDIT_DIDUCTION={
     "chroma":150
 }
 def wavespeed_ai_call(model_id, api_key, payload=None, poll_interval=0.5,user_id=None):
-    """
-    Dynamic WaveSpeedAI API caller.
-
-    Args:
-        model_id (str): Model name, e.g., "flux-dev-ultra-fast"
-        api_key (str): Your WaveSpeedAI API key
-        payload (dict, optional): API request payload. Uses default if None.
-        poll_interval (float): Seconds to wait between status checks
-    Returns:
-        str: Output URL or error message
-    """
+ 
     if payload is None:
         payload = {
             "prompt":"A futuristic city skyline at sunset",
@@ -57,7 +47,7 @@ def wavespeed_ai_call(model_id, api_key, payload=None, poll_interval=0.5,user_id
     if credits<image_deduct_credit:
         return {"error":"Insufficient credits ! TOP UP NOW !"}
 
-    # Default payload if none provided
+
  
     
     headers = {
@@ -67,7 +57,6 @@ def wavespeed_ai_call(model_id, api_key, payload=None, poll_interval=0.5,user_id
 
     url = f"https://api.wavespeed.ai/api/v3/wavespeed-ai/{model_id}"
 
-    # Submit the task
     response = requests.post(url, headers=headers, data=json.dumps(payload))
     if response.status_code != 200:
         return f"Error submitting {model_id}: {response.status_code}, {response.text}"
@@ -75,7 +64,8 @@ def wavespeed_ai_call(model_id, api_key, payload=None, poll_interval=0.5,user_id
     request_id = response.json()["data"]["id"]
     print(f"Task submitted for {model_id}. Request ID: {request_id}")
 
-    # Poll for result
+    #
+
     result_url = f"https://api.wavespeed.ai/api/v3/predictions/{request_id}/result"
     start_time = time.time()
     while True:
@@ -93,7 +83,7 @@ def wavespeed_ai_call(model_id, api_key, payload=None, poll_interval=0.5,user_id
             trackUsedWords(user_id=user_id,words=image_deduct_credit)
             output_url = result["outputs"][0]
             elapsed = time.time() - start_time
-            # return f"{model_id} completed in {elapsed:.2f}s. Output URL: {output_url}"
+           
             return {
             "text": f"Image generated successfully ({payload.get('size')}) using {model_id}.",
             "images": [output_url]

@@ -18,9 +18,9 @@ from .google_func import gemini_response
 from .wavespeedai import wavespeed_ai_call
 from PIL import Image
 from io import BytesIO
+from .image_to_url_save import download_and_store_webp
 
-
-
+from asgiref.sync import sync_to_async
 
 class ChatConsumer(AsyncWebsocketConsumer):
     # max_message_size = 10 * 1024 * 1024 
@@ -154,8 +154,9 @@ class ChatConsumer(AsyncWebsocketConsumer):
             api_key = getattr(model, "api_key", None)
             if model_id and api_key:
                 try:
+                    base_cost=getattr(model,"base_cost",500)
                     ai_response = await database_sync_to_async(gemini_response)(
-                        message_content, model_id, api_key, self.user.id,user_images,summary=session_data.get("summary"),num_images=num_images
+                        message_content, model_id, api_key, self.user.id,user_images,summary=session_data.get("summary"),num_images=num_images,base_cost=base_cost
                     )
                     if ai_response:
                         saved_ai_message = await self.save_message(
@@ -176,15 +177,17 @@ class ChatConsumer(AsyncWebsocketConsumer):
             
             if model_id and api_key:
                 try:
+                    base_cost=getattr(model,"base_cost",500)
                     ai_response = await database_sync_to_async(gpt_response)(
-                        message_content, model_id, api_key, self.user.id,user_images,height,width,summary=session_data.get("summary"),num_images=num_images
+                        message_content, model_id, api_key, self.user.id,user_images,height,width,summary=session_data.get("summary"),num_images=num_images,base_cost=base_cost
                     )
 
                     
                     if ai_response:
                         image_blocks=[]
                         images=ai_response.get("images", [])
-                        images = [img for img in images if img.startswith("http")]
+                        images = await sync_to_async(download_and_store_webp)(image_urls=images)
+                        images = [img for img in images]
                         # print(images)
                         # if images:
                         #     for img in images:
@@ -219,8 +222,9 @@ class ChatConsumer(AsyncWebsocketConsumer):
             if model_id and api_key:
                 # print("i am in the leonardo")
                 try:
+                    base_cost=getattr(model,"base_cost",500)
                     ai_response=await database_sync_to_async(leonardo_response)(
-                        prompt=message_content,user_id=self.user.id,model_id=model_id,api_key=api_key,num_images=num_images,width=width,height=height,summary=session_data.get("summary")
+                        prompt=message_content,user_id=self.user.id,model_id=model_id,api_key=api_key,num_images=num_images,width=width,height=height,summary=session_data.get("summary"),BASE_COST=base_cost
                     )
                     if ai_response:
                         saved_ai_message = await self.save_message(
