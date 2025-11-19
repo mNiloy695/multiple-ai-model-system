@@ -1,9 +1,7 @@
-import os
-import uuid
 import requests
-from django.conf import settings
 from accounts.models import CreditAccount, User
 from .track_used_word_subscription import trackUsedWords
+from .image_to_url_save import download_and_store_webp  # your existing function
 
 # Cache for model_id → allowed_resolutions
 MODEL_INFO_CACHE = {}
@@ -22,27 +20,6 @@ def refresh_model_info(api_key):
         allowed = m.get("allowed_resolutions") or [256, 512, 768, 1024]
         MODEL_INFO_CACHE[model_id] = allowed
 
-def save_image_permanently(image_url: str, user_id: int) -> str:
-    """
-    Downloads the image from Leonardo and saves it in Django media folder.
-    Returns the permanent URL.
-    """
-    response = requests.get(image_url, stream=True)
-    if response.status_code != 200:
-        return None
-
-    user_folder = os.path.join(settings.MEDIA_ROOT, "ai_images", str(user_id))
-    os.makedirs(user_folder, exist_ok=True)
-
-    filename = f"{uuid.uuid4()}.png"
-    file_path = os.path.join(user_folder, filename)
-
-    with open(file_path, "wb") as f:
-        for chunk in response.iter_content(1024):
-            f.write(chunk)
-
-    return os.path.join(settings.MEDIA_URL, "ai_images", str(user_id), filename)
-
 def leonardo_response(
     prompt: str,
     user_id: int,
@@ -55,8 +32,7 @@ def leonardo_response(
     max_images_per_request: int = 1,
 ):
     try:
-        # -------------------------
-        # USER & CREDIT CHECK
+    
         # -------------------------
         user = User.objects.filter(id=user_id).first()
         if not user:
@@ -64,14 +40,14 @@ def leonardo_response(
 
         credit_account = CreditAccount.objects.filter(user=user).first()
         if not credit_account:
-            return {"images": [], "error": "Credit account not found.", "sender": "system"}
+            
+            # return {"images": [], "error": "Credit account not found.", "sender": "system"}
+            credit_account=CreditAccount.objects.create(user=user,credits=0)
 
         if not api_key:
             return {"images": [], "error": "API key missing.", "sender": "system"}
 
-        # -------------------------
-        # LOAD MODEL INFO
-        # -------------------------
+        
         if model_id not in MODEL_INFO_CACHE:
             refresh_model_info(api_key)
 
@@ -79,24 +55,23 @@ def leonardo_response(
         if not allowed_sizes:
             return {"images": [], "error": f"Unknown model {model_id}", "sender": "system"}
 
-        # fallback if requested size not allowed
+        
         if width not in allowed_sizes or height not in allowed_sizes:
             width = max([s for s in allowed_sizes if s <= width], default=min(allowed_sizes))
             height = max([s for s in allowed_sizes if s <= height], default=min(allowed_sizes))
 
         num_images = min(num_images, max_images_per_request)
 
-        # -------------------------
-        # CALCULATE COST BEFORE API CALL
-        # -------------------------
+      
         # resolution_factor = (width * height) / (512 * 512)
-        image_cost = int(BASE_COST )
+
+        image_cost = int(BASE_COST)
         total_cost = image_cost * num_images
 
         if credit_account.credits < total_cost:
             return {"images": [], "error": "Not enough credits for requested image(s).", "sender": "system"}
 
-        # Deduct credits before API call
+        
         credit_account.credits -= total_cost
         credit_account.save()
         prompt_words = len(prompt.split())
@@ -104,9 +79,6 @@ def leonardo_response(
         user.save()
         trackUsedWords(user.id, prompt_words)
 
-        # -------------------------
-        # CALL LEONARDO API
-        # -------------------------
         payload = {
             "prompt": prompt,
             "num_images": num_images,
@@ -120,31 +92,25 @@ def leonardo_response(
         if response.status_code != 200:
             # Refund credits if API fails
             credit_account.credits += total_cost
-            user.total_token_used -=total_cost
-            user.save()
-            trackUsedWords(user.id,total_cost)
             credit_account.save()
             return {"images": [], "error": f"Leonardo API error: {response.status_code} {response.text}", "sender": "system"}
+        else:
+            trackUsedWords(user.id, total_cost)
 
         data = response.json()
-
-        # -------------------------
-        # SAVE IMAGES AND RETURN PERMANENT URLs
-        # -------------------------
-        images = []
+        temp_urls = []
         for img_block in data.get("sdGenerationJob", {}).get("generated_images", []):
             url = img_block.get("url")
             if url:
-                permanent_url = save_image_permanently(url, user_id)
-                if permanent_url:
-                    images.append(permanent_url)
+                temp_urls.append(url)
 
-        return {"images": images, "error": None, "sender": "ai"}
+        
+        permanent_urls = download_and_store_webp(temp_urls)
+
+        return {"images": permanent_urls, "error": None, "sender": "ai"}
 
     except Exception as e:
         if 'credit_account' in locals():
             credit_account.credits += total_cost
-            user.total_token_used -=total_cost
-            user.save()
             credit_account.save()
         return {"images": [], "error": f"Unexpected error: {str(e)}", "sender": "system"}
