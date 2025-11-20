@@ -17,7 +17,7 @@ from google import genai
 from google.genai import types
 
 # Your API key
-API_KEY = "AIzaSyCha7ecDnUQ1BSjlYl-8MKp2U11FtqH108"
+API_KEY = ""
 
 # Initialize client
 client = genai.Client(
