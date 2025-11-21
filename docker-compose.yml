@@ -1,0 +1,40 @@
+version: '3.9'
+
+services:
+  redis:
+    image: redis:7.0-alpine
+    ports:
+      - "6382:6382"
+    command: ["redis-server", "--port", "6382"]
+
+  web:
+    build: .
+    command: daphne -b 0.0.0.0 -p 8000 AIModelBackend.asgi:application
+    volumes:
+      - .:/app
+    ports:
+      - "8081:8000"
+    env_file:
+      - .env
+    depends_on:
+      - redis
+
+  celery:
+    build: .
+    command: celery -A AIModelBackend worker -l info
+    volumes:
+      - .:/app
+    env_file:
+      - .env
+    depends_on:
+      - redis
+
+  celery-beat:
+    build: .
+    command: celery -A AIModelBackend beat -l info
+    volumes:
+      - .:/app
+    env_file:
+      - .env
+    depends_on:
+      - redis

@@ -89,3 +89,8 @@ class UserProfile(models.Model):
     avatar=models.ImageField(upload_to='profile',null=True,blank=True)
     created_at=models.DateTimeField(auto_now_add=True)
     updated_at=models.DateTimeField(auto_now=True)
+
+
+
+
+    

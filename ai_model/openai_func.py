@@ -83,7 +83,7 @@ def gpt_response(
 
         context_list.append({
         "role": "user",
-        "content": f'if user are not an image model and user say you to generate image and if you can not analize image but user say you for analize image just give them proper response that you can not do this and just suggest to user dal-e-3 for generating image  and here the promp that user says: {message}'
+        "content": f'if you are not an image model and user say you to generate image and if you can not analize image but user say you for analize image just give them proper response that you can not do this and just suggest to user dal-e-3 for generating image  and here the promp that user says: {message}'
         })
 
         

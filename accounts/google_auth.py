@@ -25,6 +25,7 @@ def get_or_create_google_user(google_data):
             # "password": User.objects.make_random_password()  # random password for JWT
         }
     )
+    
 
     return user
 

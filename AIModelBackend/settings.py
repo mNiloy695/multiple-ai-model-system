@@ -22,6 +22,8 @@ BASE_URL = config('BASE_URL', default='http://localhost:8000')
 AUTH_USER_MODEL = 'accounts.CustomUser'
 
 
+
+
 #for google pay billing 
 
 GOOGLE_SERVICE_ACCOUNT_FILE = os.path.join(BASE_DIR, "google_service_account.json")
@@ -75,15 +77,14 @@ EMAIL_HOST_USER = config('EMAIL_HOST_USER')
 EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD')
 DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL')
 
-CELERY_BROKER_URL = config('CELERY_BROKER_URL')
-
-CELERY_RESULT_BACKEND = config('CELERY_RESULT_BACKEND')
+CELERY_BROKER_URL = config('CELERY_BROKER_URL', default='redis://127.0.0.1:6382/0')
+CELERY_RESULT_BACKEND = config('CELERY_RESULT_BACKEND', default='redis://127.0.0.1:6382/0')
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = 'UTC'
 
-
+# CELERY_TASK_ALWAYS_EAGER = True
 #stripe 
 
 STRIPE_SECRET_KEY =config("STRIPE_SECRET_KEY")
