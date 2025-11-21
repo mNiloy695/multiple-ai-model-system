@@ -22,6 +22,16 @@ class RegisterView(APIView):
             OTP.objects.create(user=user, code=code, type='registration')
             message = f"Hello {user.username}\n\n Your verification code is: {code} ! It will expire in 10 minutes.\n\nThank you for registering with us!\n\nBest regards,\nMultiAI Platform Team"
             send_otp_email_task.delay(subject="Welcome to MultiAI Platform 🚀",user_email=user.email,message=message,message_type='registration')
+#             send_otp_email_task.apply_async(
+#     args=(),  # if you have only kwargs, leave empty
+#     kwargs={
+#         "subject": "Welcome to MultiAI Platform 🚀",
+#         "user_email": user.email,
+#         "message": message,
+#         "message_type": "registration"
+#     }
+# )
+
             return Response({"message": "User registered successfully. Please check your email for the verification code."}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 

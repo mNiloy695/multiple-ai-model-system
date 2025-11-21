@@ -111,10 +111,10 @@ def gemini_response(
         if summary:
             contents.append({
                 "role": "user",
-                "parts": [{"text": f"Conversation summary so far don't show this on error or response just use it for giving beeter response to user if needed: {summary}"}]
+                "parts": [{"text": f"Conversation summary so far don't show this on error or response just use it for giving beeter response to user if needed : {summary}"}]
             })
 
-        message=f"user says: {message}"
+        message=f"if you are not a image generation model but user prompt you to generate image then give response politely that you can not generate image and suggest them to user Dal-e-3. here the prompt user says: {message}"
         contents.append({"role": "user", "parts": [{"text": message}]})
 
         # Add inline images if supported
