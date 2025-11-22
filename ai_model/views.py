@@ -54,7 +54,42 @@ class ChatSessionView(viewsets.ModelViewSet):
             return self.queryset.filter(user=user).order_by('-created_at')
         
         return self.queryset.all().order_by('-created_at')
-    def perform_create(self, serializer):
-        model=AIModelInfo.objects.filter(model_id="gpt-3.5-turbo").first()
-        serializer.save(model=model,user=self.request.user)
+    
+
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        text = serializer.validated_data.get('text', True)
+        is_text = text if isinstance(text, bool) else bool(text)
+        model = AIModelInfo.objects.filter(
+            images_generating_models=not is_text,
+            is_active=True
+        ).order_by('-created_at').first()
+        
+        if not model:
+            model = AIModelInfo.objects.filter(is_active=True).order_by('-created_at').first()
+        if not model:
+            return Response({"error": "No active AI models available."}, status=400)
+        # Check for previous empty session
+        previous_session = ChatSession.objects.filter(user=request.user).order_by('-created_at').first()
+        if previous_session and not previous_session.messages.exists():
+            # Reuse previous session
+            previous_session.model = model  # optional update
+            previous_session.save()
+            data = self.get_serializer(previous_session).data
+            return Response(data, status=200)
+
+        # Otherwise, create a new session
+       
+        
+        serializer.save(model=model, user=request.user)
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=201, headers=headers)
+    # def perform_create(self, serializer):
+    #     # model_id = serializer.validated_data.get('model_id', 'gpt-3.5-turbo')
+    #     text= serializer.validated_data.get('text', True)
+    #     model_id=AIModelInfo.objects.filter(images_generating_models=not text,is_active=True).order_by('created_at').first()
+    #     model=AIModelInfo.objects.filter(model_id=model_id).first()
+    #     serializer.save(model=model,user=self.request.user)
 
