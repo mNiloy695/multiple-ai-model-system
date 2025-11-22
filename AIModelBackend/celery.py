@@ -10,8 +10,8 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'AIModelBackend.settings')
 app = Celery('AIModelBackend')
 
 # Explicitly set Redis as broker and backend
-app.conf.broker_url = "redis://127.0.0.1:6382/0"
-app.conf.result_backend = "redis://127.0.0.1:6382/0"
+app.conf.broker_url = "redis://redis:6379/0"
+app.conf.result_backend = "redis://redis:6379/0"
 
 # Optional: load additional config from Django settings
 app.config_from_object('django.conf:settings', namespace='CELERY')
@@ -24,5 +24,9 @@ app.conf.beat_schedule = {
     'update-expired-subscriptions-every-midnight': {
         'task': 'plan.tasks.update_expired_subscriptions',
         'schedule': crontab(hour=0, minute=0),
+    },
+     'delete-old-ai-images-daily': {
+        'task': 'ai_model.tasks.delete_old_images',  # path to the new task
+        'schedule': crontab(hour=0, minute=0),    # run daily at midnight
     },
 }
