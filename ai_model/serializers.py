@@ -30,6 +30,8 @@ class ChatMessageSerializer(serializers.ModelSerializer):
 
 class ChatSessionSerializer(serializers.ModelSerializer):
     messages=ChatMessageSerializer(read_only=True,many=True)
+    text = serializers.BooleanField(write_only=True,required=False,help_text="Indicates if the session is for text or image generation.")
     class Meta:
         model=ChatSession
-        fields=['id','model','user','messages','summary']
+        fields=['id','model','user','messages','summary','text','created_at','updated_at']
+        read_only_fields=['created_at','updated_at','user','messages']
