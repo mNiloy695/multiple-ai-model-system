@@ -172,7 +172,7 @@ class ForgotPasswordView(APIView):
             OTP.objects.create(user=user, code=code, type='registration')
             
             message = f"Hello! Your temporary code is {code}. It will expire in 10 minutes."
-            send_the_email(
+            send_otp_email_task.delay(
                 subject="Forgot Password 🚀",
                 user_email=email,
                 message=message,
