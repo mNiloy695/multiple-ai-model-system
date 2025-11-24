@@ -243,7 +243,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
         elif provider=="wavespeedai":
             model_id=getattr(model,"model_id",None)
-            api_key=getattr(model,"model_id",None)
+            api_key=getattr(model,"api_key",None)
             width=data.get("width",1024)
             height=data.get('height',1024)
             num_images=data.get('num_images',1)
@@ -252,12 +252,13 @@ class ChatConsumer(AsyncWebsocketConsumer):
             seed=data.get('seed',-1)
             guidance_scale=data.get("guidance_scale",3.5)
             output_format=data.get("output_format","jpeg")
+            prompt=data.get('message')
 
 
             if model_id and api_key:
                 base_cost=getattr(model,"base_cost",500)
                 payload = {
-                      "prompt":f"A futuristic city skyline at sunset",  # <-- your prompt here
+                      "prompt":f"make a beautiful image based on this promp {prompt}",  # <-- your prompt here
                       "strength":int(strength),
                       "size": f"{height}*{width}",
                       "num_inference_steps":int(num_inference_steps),
@@ -276,14 +277,22 @@ class ChatConsumer(AsyncWebsocketConsumer):
                         user_id=self.user.id,
                         base_cost=base_cost
                     )
+                    
                     if ai_response:
+                        print("AI RESPONSE FROM WEAVESPEEDAI:",ai_response)
+                        images=ai_response.get("images", [])
+                        images = await sync_to_async(download_and_store_webp)(image_urls=images)
+                        images = [img for img in images]
+                        print(images)
                         saved_ai_message = await self.save_message(
                             self.session_id,
                             self.user,
                             "ai",
                             content = ai_response.get("text") or ai_response.get("content") or ai_response.get("error") or "",
-                            images=ai_response.get("images", [])
+                            images=images
                         )
+                        if saved_ai_message:
+                            await self.send(text_data=json.dumps({"type": "new_message", "message": saved_ai_message},ensure_ascii=False))
                 except Exception as e:
                       await self.send(text_data=json.dumps({"type": "error", "message": f"AI error: {str(e)}"},ensure_ascii=False))
 
