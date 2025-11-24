@@ -76,14 +76,14 @@ def gpt_response(
             context_list.append(
                 {
         "role": "system",
-        "content": f"Conversation summary so and listen don't show or response this summary to user just use this to track then context much better way : {summary}"
+        "content": f"Conversation summary so and listen don't show or response this summary to user just use this to track then context much better way here summary: {summary}"
                 }
             )
         prompt_words = len(message.split())
 
         context_list.append({
         "role": "user",
-        "content": f'if you are not an image model and user say you to generate image and if you can not analize image but user say you for analize image just give them proper response that you can not do this and just suggest to user dal-e-3 for generating image  and here the promp that user says: {message}'
+        "content": f'if you are not an image model and user say you to generate image and if you can not analize image but user say you for analize image just give them proper response that you can not do this .Here the prompt that user says to you: {message} follw it anyway'
         })
 
         
@@ -257,6 +257,7 @@ def _vision_request(client, model_id, message, images_data_list, max_tokens):
         else:
             image_blocks.append({"type": "image_url", "image_url": f"data:image/png;base64,{img}"})
     prompt_text = "\n".join([f"{m['role'].capitalize()}: {m['content']}" for m in message])
+    
 
     response = client.chat.completions.create(
         model=model_id,
@@ -268,31 +269,52 @@ def _vision_request(client, model_id, message, images_data_list, max_tokens):
     return response.choices[0].message.content.strip()
 
 
-def _image_request(client, model_id, prompt, width=None, height=None,num_images=1):
-    """
-    Generate an image using any OpenAI image model.
-    """
-    # Default size
+# def _image_request(client, model_id, prompt, width=None, height=None,num_images=1):
+#     """
+#     Generate an image using any OpenAI image model.
+#     """
+#     # Default size
+#     size = f"{width}x{height}" if width and height else "1024x1024"
+
+#     # Optionally: define some common allowed sizes
+#     common_sizes = {"256x256", "512x512", "1024x1024", "1024x1792"}  #,"1792x1024", "2048x2048"}
+#     if size not in common_sizes:
+#         size = "1024x1024"  # fallback
+
+#     # Generate image dynamically using any model
+
+#     prompt_text = "\n".join([f"{m['role'].capitalize()}: {m['content']}" for m in prompt])
+#     # prompt_text = "\n".join([f"{m['role'].capitalize()}: {m['content']}" for m in prompt])
+#     response = client.images.generate(
+#         model=model_id,
+#         prompt=prompt_text,
+#         size=size,
+#         n=num_images
+#     )
+
+#     images = [img.url for img in response.data]
+#     return f"Image generated successfully ({size}) using {model_id}.", images
+
+def _image_request(client, model_id, messages, width=None, height=None, num_images=1):
+
+    # extract only the final user message
+    user_prompt = next((m["content"] for m in messages if m["role"] == "user"), "")
+
+    # image model cannot accept system/instruction text
+    if "Here the prompt that user says to you:" in user_prompt:
+        user_prompt = user_prompt.split("Here the prompt that user says to you:")[-1].strip()
+
     size = f"{width}x{height}" if width and height else "1024x1024"
 
-    # Optionally: define some common allowed sizes
-    common_sizes = {"256x256", "512x512", "1024x1024", "1024x1792"}  #,"1792x1024", "2048x2048"}
-    if size not in common_sizes:
-        size = "1024x1024"  # fallback
-
-    # Generate image dynamically using any model
-
-    prompt_text = "\n".join([f"{m['role'].capitalize()}: {m['content']}" for m in prompt])
     response = client.images.generate(
         model=model_id,
-        prompt=prompt_text,
+        prompt=user_prompt,
         size=size,
         n=num_images
     )
 
     images = [img.url for img in response.data]
-    return f"Image generated successfully ({size}) using {model_id}.", images
-
+    return f"Image generated successfully ({size})", images
 
 
 
