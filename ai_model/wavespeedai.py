@@ -16,6 +16,7 @@ User=get_user_model()
 #     "chroma":150
 # }
 # Fixed wavespeed_ai_call
+
 def wavespeed_ai_call(model_id, api_key, payload=None, poll_interval=0.5, user_id=None, base_cost=500):
     
     if payload is None:
