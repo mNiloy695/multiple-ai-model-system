@@ -80,29 +80,33 @@ from google.genai import types
 
 
 
-import fal_client
-import os
-os.environ["FAL_KEY"] = "74eb235b-2f39-426e-a526-26a2a52b1695:e430c6166fd9fe24479512fe9f6d8d87"
-def on_queue_update(update):
-    if isinstance(update, fal_client.InProgress):
-        for log in update.logs:
-           print(log["message"])
+# import fal_client
+# import os
+# os.environ["FAL_KEY"] = "74eb235b-2f39-426e-a526-26a2a52b1695:e430c6166fd9fe24479512fe9f6d8d87"
+# def on_queue_update(update):
+#     if isinstance(update, fal_client.InProgress):
+#         for log in update.logs:
+#            print(log["message"])
 
-try:
-    result = fal_client.subscribe(
-    "fal-ai/flux/dev",
-    arguments={
-        "prompt": "a cat",
-        "seed": 6252023,
-        "image_size": "landscape_4_3",
-        "num_images": 4
-    },
-    with_logs=True,
-    on_queue_update=on_queue_update,
-    headers={"X-Custom-Header": "value"},  # Optional: custom headers
-    )
-    print(result)
-except Exception as e:
-    print("Error during image generation:", e)
+# try:
+#     result = fal_client.subscribe(
+#     "fal-ai/flux/dev",
+#     arguments={
+#         "prompt": "a cat",
+#         "seed": 6252023,
+#         "image_size": "landscape_4_3",
+#         "num_images": 4
+#     },
+#     with_logs=True,
+#     on_queue_update=on_queue_update,
+#     headers={"X-Custom-Header": "value"},  # Optional: custom headers
+#     )
+#     print(result)
+# except Exception as e:
+#     print("Error during image generation:", e)
+
+
+
+
 
 
