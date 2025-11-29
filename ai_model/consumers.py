@@ -19,7 +19,7 @@ from .wavespeedai import wavespeed_ai_call
 from PIL import Image
 from io import BytesIO
 from .image_to_url_save import download_and_store_webp
-
+from .fal_ai import call_fal_ai
 from asgiref.sync import sync_to_async
 
 class ChatConsumer(AsyncWebsocketConsumer):
@@ -297,9 +297,36 @@ class ChatConsumer(AsyncWebsocketConsumer):
                       await self.send(text_data=json.dumps({"type": "error", "message": f"AI error: {str(e)}"},ensure_ascii=False))
 
 
-                
+        elif provider=="falai":
+            model_id = getattr(model, "model_id", None)
+            api_key = getattr(model, "api_key", None)
+            num_images=data.get("num_images",1)
+            size=data.get("size","512x512")
+            steps=data.get("steps",50)
+            cfg_scale=data.get("cfg_scale",7.0)
+            seed=data.get("seed",6252023)
+
+            if model_id and api_key:
+                try:
+                    base_cost=getattr(model,"base_cost",500)
+                    ai_response = await database_sync_to_async(call_fal_ai)(
+                        api_key, message_content,model_id,self.user.id,num_images,base_cost,seed,steps,cfg_scale,size
+                    )
+                    if ai_response:
+                        saved_ai_message = await self.save_message(
+                            self.session_id,
+                            self.user,
+                            "ai",
+                            content = ai_response.get("text") or ai_response.get("content") or ai_response.get("error") or "",
+
+                            images=ai_response.get("images", [])
+                        )
+                        if saved_ai_message:
+                            await self.send(text_data=json.dumps({"type": "new_message", "message": saved_ai_message},ensure_ascii=False))
+                except Exception as e:
+                    await self.send(text_data=json.dumps({"type": "error", "message": f"AI error: {str(e)}"},ensure_ascii=False))        
         else:
             await self.send(text_data=json.dumps({"type": "error", "message": f"Unsupported provider: {provider}"},ensure_ascii=False))
-
+      
     async def disconnect(self, close_code):
         await self.channel_layer.group_discard(self.room_group_name ,self.channel_name)
