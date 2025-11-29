@@ -107,6 +107,8 @@ STORAGES = {
 }
 # settings.py
 
+# ROTATE_REFRESH_TOKENS = True
+# BLACKLIST_AFTER_ROTATION = True
 
 REST_FRAMEWORK = {
     

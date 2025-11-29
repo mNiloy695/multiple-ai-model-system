@@ -126,9 +126,10 @@ class ResetPasswordSerializer(serializers.Serializer):
 from .models import UserProfile
 class UserProfileSerializer(serializers.ModelSerializer):
     user_details=serializers.SerializerMethodField(read_only=True)
+    user=serializers.PrimaryKeyRelatedField(read_only=True)
     class Meta:
         model=UserProfile
-        fields=['user','user_details','first_name','last_name','created_at','updated_at']
+        fields=['id','user','user_details','first_name','last_name','created_at','updated_at','avatar']
     
     def get_user_details(self,obj):
         user=obj.user
