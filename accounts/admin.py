@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import CustomUser,OTP,CreditTransaction,CreditAccount
+from .models import CustomUser,OTP,CreditTransaction,CreditAccount,UserProfile
 # Register your models here.
 
 @admin.register(CustomUser)
@@ -28,3 +28,9 @@ class CreditTransactionAdmin(admin.ModelAdmin):
     search_fields = ('credit_account__user__email', 'transaction_type')
     list_filter = ('transaction_type', 'created_at')
     ordering = ('-created_at',)
+
+@admin.register(UserProfile)
+class UserProfileAdmin(admin.ModelAdmin):
+    list_display = ('id', 'user', 'first_name', 'last_name', 'created_at')
+    search_fields = ('user__email', 'first_name', 'last_name')
+    ordering = ('id',)

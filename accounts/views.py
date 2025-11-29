@@ -223,7 +223,20 @@ from rest_framework import viewsets,permissions
 from .models import UserProfile
 from .serializers import UserProfileSerializer
 
+class CustomerPermission(permissions.BasePermission):
+    def has_permission(self, request, view):
+        if request.user.is_authenticated:
+            return True
+        return False
+    def has_object_permission(self, request, view, obj):
+        return request.user.is_staff or obj.user==request.user
+
 class ProfileView(viewsets.ModelViewSet):
     queryset=UserProfile.objects.select_related('user',"user__creditaccount")
-    permission_classes=[permissions.IsAuthenticated]
+    permission_classes=[CustomerPermission]
     serializer_class=UserProfileSerializer
+
+    def get_queryset(self):
+        if self.request.user.is_staff:
+            return super().get_queryset()
+        return super().get_queryset().filter(user=self.request.user)

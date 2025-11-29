@@ -1,5 +1,8 @@
-from .views import RegisterView, ActivateAccountView, LoginView,LogoutView,CreditTransactionHistoryView,GoogleLoginAPIView,ForgotPasswordView,ResetView
-from django.urls import path
+from .views import RegisterView, ActivateAccountView, LoginView,LogoutView,CreditTransactionHistoryView,GoogleLoginAPIView,ForgotPasswordView,ResetView,ProfileView
+from django.urls import path,include
+from rest_framework.routers import DefaultRouter
+router=DefaultRouter()
+router.register('profile',ProfileView,basename='profile')
 urlpatterns = [
     path('register/', RegisterView.as_view(), name='register'),
     path('activate/', ActivateAccountView.as_view(), name='activate'),
@@ -9,5 +12,6 @@ urlpatterns = [
     path('transactions/', CreditTransactionHistoryView.as_view(), name='transaction-history'),
     path('forgot-password/',ForgotPasswordView.as_view(),name="forgot-password"),
     path('reset-password/',ResetView.as_view(),name='reset-password'),
+    path('',include(router.urls)),
     
 ]
