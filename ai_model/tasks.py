@@ -2,7 +2,6 @@ import os
 import time
 from celery import shared_task
 from django.conf import settings
-
 IMAGE_FOLDER = os.path.join(settings.BASE_DIR, "media/ai_images")
 EXPIRATION_TIME =24 * 60 * 60  # 1 week in seconds
 
@@ -18,3 +17,7 @@ def delete_old_images():
                 os.remove(file_path)
                 print(f"Deleted: {file_path}")
     return "Old images cleanup completed."
+
+
+
+

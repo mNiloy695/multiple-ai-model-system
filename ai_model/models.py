@@ -10,6 +10,7 @@ class AIModelInfo(models.Model):
         # ('huggingface', 'Hugging Face'),
         # ('anthropic', 'Anthropic'),
         ('google', 'Google'),
+        ('falai', 'FAL AI'),
         # ('mistral', 'Mistral AI'),
         # ('meta', 'Meta AI'),
         # ('custom', 'Custom / Self-Hosted'),

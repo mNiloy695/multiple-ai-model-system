@@ -6,8 +6,6 @@ from accounts.models import CreditAccount
 User = get_user_model()
 
 # call_fal_ai(api_key, prompt,model,user_id,base_cost=None,seed=6252023, steps=50, cfg_scale=7.0, size="512x512"):
-
-
 def call_fal_ai(api_key, prompt,model,user_id,num_images=1,base_cost=None,seed=6252023, steps=50, cfg_scale=7.0, size="512x512"):
     try:
         user = User.objects.get(id=user_id)
@@ -34,7 +32,7 @@ def call_fal_ai(api_key, prompt,model,user_id,num_images=1,base_cost=None,seed=6
 
     try:
         # Set the API key dynamically for this session
-
+        
         os.environ["FAL_KEY"] = api_key
 
         # Submit the request
