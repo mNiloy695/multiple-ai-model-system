@@ -37,7 +37,7 @@ def wavespeed_ai_call(model_id, api_key, payload=None, poll_interval=0.5, user_i
         user = User.objects.get(id=user_id)
     except User.DoesNotExist:
         return {"error": "User Id not Found"}
-
+    print("payload:", payload )
     credit_account = CreditAccount.objects.filter(user=user).first()
     if not credit_account:
         credit_account = CreditAccount.objects.create(user=user, credits=0)

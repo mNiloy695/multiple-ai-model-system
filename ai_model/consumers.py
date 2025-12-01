@@ -174,7 +174,9 @@ class ChatConsumer(AsyncWebsocketConsumer):
         elif provider=="openai":
             model_id = getattr(model, "model_id", None)
             api_key = getattr(model, "api_key", None)
-            
+            num_images=data.get("num_images",1)
+            height=data.get("height",512)
+            width=data.get("width",512)            
             if model_id and api_key:
                 try:
                     base_cost=getattr(model,"base_cost",500)
@@ -242,24 +244,22 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
 
         elif provider=="wavespeedai":
-            model_id=getattr(model,"model_id",None)
-            api_key=getattr(model,"api_key",None)
-            width=data.get("width",1024)
-            height=data.get('height',1024)
-            num_images=data.get('num_images',1)
-            strength=data.get("strength",0.8)
-            num_inference_steps=data.get("num_inference_steps",28)
-            seed=data.get('seed',-1)
-            guidance_scale=data.get("guidance_scale",3.5)
-            output_format=data.get("output_format","jpeg")
-            prompt=data.get('message')
-
+            model_id = getattr(model, "model_id", None)
+            api_key = getattr(model, "api_key", None)
+            width = data.get("width", 1024)
+            height = data.get("height", 1024)
+            num_images = data.get("num_images", 1)
+            num_inference_steps = data.get("num_inference_steps", 45)  # higher for quality
+            guidance_scale = data.get("guidance_scale", 7.5)           # follow prompt better
+            seed = data.get("seed", 42)                                # fixed seed for consistency
+            output_format = data.get("output_format", "jpeg")
+            prompt = data.get("message")
 
             if model_id and api_key:
                 base_cost=getattr(model,"base_cost",500)
                 payload = {
-                      "prompt":f"make a beautiful image based on this promp {prompt}",  # <-- your prompt here
-                      "strength":int(strength),
+                      "prompt":f"{prompt}",  # <-- your prompt here
+                    #   "strength":int(strength),
                       "size": f"{height}*{width}",
                       "num_inference_steps":int(num_inference_steps),
                       "seed": int(seed),
