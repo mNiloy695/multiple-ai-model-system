@@ -162,6 +162,59 @@ class VerifyGooglePurchaseView(APIView):
             return Response({
                 "error":"plan model not found"
             })
+        if not plan.subscription_duration=="one-time" and user.subscribed:
+                subscription=SubscriptionModel.objects.filter(user=user,status='active').first()
+
+                if subscription:
+                       previous_subs_duration_type=subscription.duration_type
+                       new_req_subs_duration_type=plan.subscription_duration
+
+                       if new_req_subs_duration_type==previous_subs_duration_type:
+                          return Response({"message":f"Your {previous_subs_duration_type} Subscription already active Upgrade it or Wait for expired or Top Up one time  credits"})
+                       if previous_subs_duration_type=="yearly" :
+                          return Response({"message":"Go With One Time Top Up or Wait Until the date expire of your subscription"})
+                       if previous_subs_duration_type=="monthly" and new_req_subs_duration_type=='weekly':
+                         return Response({"message":"Go With One Time Top Up or Wait Until the date expire of your subscription"})
+        if plan.subscription_duration !="one-time":
+                    expire_date=None
+                    if plan.subscription_duration=="weekly":
+                        expire_date=datetime.now(timezone.utc)+timedelta(days=7)
+                    elif plan.subscription_duration=="monthly":
+                        expire_date=datetime.now(timezone.utc)+timedelta(days=30)
+                    elif plan.subscription_duration=="yearly":
+                        expire_date=datetime.now(timezone.utc)+timedelta(days=365)
+
+                    # subscription_id=metadata.get('subscription_id')
+                    subs,created=SubscriptionModel.objects.get_or_create(
+                    user=user,
+                    plan=plan,
+                    status="active",
+                    defaults={
+                    "price":plan.amount,
+                    "credits_words":plan.words_or_credits,
+                    "used_words":0,
+                    "duration_type":plan.subscription_duration,
+                    "start_date":datetime.now(timezone.utc),
+                    "expire_date":expire_date,
+                    
+                    }
+                    )
+                    print("subs ",subs.status),
+                    print("created",created)
+                   
+                    if not created:
+
+                        subs.price=plan.amount
+                        subs.credits_words+=plan.words_or_credits
+                        subs.used_words=0
+                        subs.duration_type=plan.subscription_duration
+                        subs.start_date=datetime.now(timezone.utc)
+                        subs.expire_date=expire_date
+                        
+                        subs.save()
+                    user.subscribed=True
+                    user.save()       
+        
         
         product_id = plan.stripe_product_price_id
 
@@ -205,44 +258,44 @@ class VerifyGooglePurchaseView(APIView):
                 )
 
 
-            if plan.subscription_duration !="one-time":
-                    expire_date=None
-                    if plan.subscription_duration=="weekly":
-                        expire_date=datetime.now(timezone.utc)+timedelta(days=7)
-                    elif plan.subscription_duration=="monthly":
-                        expire_date=datetime.now(timezone.utc)+timedelta(days=30)
-                    elif plan.subscription_duration=="yearly":
-                        expire_date=datetime.now(timezone.utc)+timedelta(days=365)
+            # if plan.subscription_duration !="one-time":
+            #         expire_date=None
+            #         if plan.subscription_duration=="weekly":
+            #             expire_date=datetime.now(timezone.utc)+timedelta(days=7)
+            #         elif plan.subscription_duration=="monthly":
+            #             expire_date=datetime.now(timezone.utc)+timedelta(days=30)
+            #         elif plan.subscription_duration=="yearly":
+            #             expire_date=datetime.now(timezone.utc)+timedelta(days=365)
 
-                    # subscription_id=metadata.get('subscription_id')
-                    subs,created=SubscriptionModel.objects.get_or_create(
-                    user=user,
-                    plan=plan,
-                    defaults={
-                    "price":plan.amount,
-                    "credits_words":plan.words_or_credits,
-                    "used_words":0,
-                    "duration_type":plan.subscription_duration,
-                    "start_date":datetime.now(timezone.utc),
-                    "expire_date":expire_date,
+            #         # subscription_id=metadata.get('subscription_id')
+            #         subs,created=SubscriptionModel.objects.get_or_create(
+            #         user=user,
+            #         plan=plan,
+            #         defaults={
+            #         "price":plan.amount,
+            #         "credits_words":plan.words_or_credits,
+            #         "used_words":0,
+            #         "duration_type":plan.subscription_duration,
+            #         "start_date":datetime.now(timezone.utc),
+            #         "expire_date":expire_date,
                     
-                    }
-                    )
-                    print("subs ",subs),
-                    print("created",created)
+            #         }
+            #         )
+            #         print("subs ",subs),
+            #         print("created",created)
                    
-                    if not created:
+            #         if not created:
 
-                        subs.price=plan.amount
-                        subs.credits_words+=plan.words_or_credits
-                        subs.used_words=0
-                        subs.duration_type=plan.subscription_duration
-                        subs.start_date=datetime.now(timezone.utc)
-                        subs.expire_date=expire_date
+            #             subs.price=plan.amount
+            #             subs.credits_words+=plan.words_or_credits
+            #             subs.used_words=0
+            #             subs.duration_type=plan.subscription_duration
+            #             subs.start_date=datetime.now(timezone.utc)
+            #             subs.expire_date=expire_date
                         
-                        subs.save()
-                    user.subscribed=True
-                    user.save()
+            #             subs.save()
+            #         user.subscribed=True
+            #         user.save()
             
             Revenue.objects.create(
                     user=user,
