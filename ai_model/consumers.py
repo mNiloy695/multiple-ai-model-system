@@ -21,7 +21,7 @@ from io import BytesIO
 from .image_to_url_save import download_and_store_webp
 from .fal_ai import call_fal_ai
 from asgiref.sync import sync_to_async
-
+from django.db import transaction
 class ChatConsumer(AsyncWebsocketConsumer):
     # max_message_size = 10 * 1024 * 1024 
     @database_sync_to_async
@@ -57,6 +57,13 @@ class ChatConsumer(AsyncWebsocketConsumer):
             }
         except ChatSession.DoesNotExist:
             return None
+   
+
+    @database_sync_to_async  
+    def decrement_api_limit(self, user):
+       with transaction.atomic():
+         user.api_limit -= 1
+         user.save()
 
     @database_sync_to_async
     def save_message(self, session_id, user, sender, content=None, images=None):
@@ -100,6 +107,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
             return user
         except Exception:
             return AnonymousUser()
+    
 
     async def connect(self):
         self.user = await self.get_user_from_token()
@@ -125,12 +133,33 @@ class ChatConsumer(AsyncWebsocketConsumer):
         except json.JSONDecodeError:
             await self.send(text_data=json.dumps({"type": "error", "message": "Invalid JSON format"}))
             return
+        
+        if self.user.api_limit<=0:
+            await self.send(text_data=json.dumps({"type":"limit exceed","message":"You exceed today limit watch ads or buy subscription for get more request"}))
+            return 
+        
+
+        self.decrement_api_limit(self.user)
+        
+     
+
 
         message_content = data.get("message", "")
         user_images = data.get("images", [])
         height=data.get('height')
         width=data.get('width')
         num_images=data.get('num_images')
+        print(message_content)
+        #set word limit for free trail
+
+        if not self.user.subscribed:
+            message_content_words=message_content.split()
+            if len(message_content_words)>400:
+                message_content=str(message_content[:400])
+        
+
+        await self.decrement_api_limit(self.user)
+        
 
         
         saved_message = await self.save_message(

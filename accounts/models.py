@@ -30,6 +30,8 @@ class CustomUser(AbstractUser):
     email = models.EmailField(unique=True)
     total_token_used=models.IntegerField(default=0,null=True,blank=True)
     subscribed=models.BooleanField(default=False,null=True,blank=True)
+    api_limit=models.IntegerField(default=5)
+    word_limit=models.IntegerField(default=400)
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = []
     
