@@ -164,7 +164,6 @@ class VerifyGooglePurchaseView(APIView):
             })
         if not plan.subscription_duration=="one-time" and user.subscribed:
                 subscription=SubscriptionModel.objects.filter(user=user,status='active').first()
-
                 if subscription:
                        previous_subs_duration_type=subscription.duration_type
                        new_req_subs_duration_type=plan.subscription_duration

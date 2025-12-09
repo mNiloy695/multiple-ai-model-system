@@ -17,6 +17,7 @@ def create_credit_account(sender, instance, created, **kwargs):
                 message='Initial bonus credits for account activation'
             )
 
+
 @receiver(post_save, sender=User)
 def create_user_profile(sender, instance, created, **kwargs):
     if created:

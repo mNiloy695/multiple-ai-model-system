@@ -42,12 +42,13 @@ ALLOWED_HOSTS = [
     "overrigged-botanically-lila.ngrok-free.dev",
     '127.0.0.1',
     '10.10.13.75',
+    '4867888fdea6.ngrok-free.app',
 ]
 
 CSRF_TRUSTED_ORIGINS = [
     "https://overrigged-botanically-lila.ngrok-free.dev",
-    'http://10.10.13.75:8000/',
-    #
+    'http://10.10.13.75:8000',
+    'https://4867888fdea6.ngrok-free.app',
 ]
 # Application definition
 
