@@ -149,6 +149,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
         height=data.get('height')
         width=data.get('width')
         num_images=data.get('num_images')
+<<<<<<< HEAD
         print(message_content)
         #set word limit for free trail
 
@@ -161,12 +162,31 @@ class ChatConsumer(AsyncWebsocketConsumer):
         await self.decrement_api_limit(self.user)
         
 
+=======
+>>>>>>> 5b2e615 (image edit model added)
         
-        saved_message = await self.save_message(
+
+        if user_images:
+                images=await sync_to_async(download_and_store_webp)(image_urls=[user_images])
+                images = [img for img in images]
+                        
+                saved_message = await self.save_message(
+                            self.session_id,
+                            self.user,
+                            "user",
+                            content = message_content,
+
+                            images=images
+                        )
+                if saved_message:
+                            await self.send(text_data=json.dumps({"type": "new_message", "message": saved_message},ensure_ascii=False))
+        else: 
+            saved_message = await self.save_message(
             self.session_id, self.user, "user", content=message_content, images=user_images
-        )
-        if saved_message:
-            await self.send(text_data=json.dumps({"type": "new_message", "message": saved_message}))
+              )
+            if saved_message:
+               await self.send(text_data=json.dumps({"type": "new_message", "message": saved_message}))
+        
 
       
         session_data = await self.get_session_data(self.session_id, self.user)
@@ -283,21 +303,56 @@ class ChatConsumer(AsyncWebsocketConsumer):
             seed = data.get("seed", 42)                                # fixed seed for consistency
             output_format = data.get("output_format", "jpeg")
             prompt = data.get("message")
+            image=data.get("images",None)
+            print(image)
+
+
+
 
             if model_id and api_key:
                 base_cost=getattr(model,"base_cost",500)
-                payload = {
-                      "prompt":f"{prompt}",  # <-- your prompt here
-                    #   "strength":int(strength),
-                      "size": f"{height}*{width}",
-                      "num_inference_steps":int(num_inference_steps),
-                      "seed": int(seed),
-                      "guidance_scale":float(guidance_scale),
-                      "num_images":int(num_images),
-                      "output_format":output_format,
-                      "enable_base64_output": False,
-                      "enable_sync_mode": False
-    }
+                model_type=getattr(model,"model_type")
+                print(model_type)
+                
+                if model_type=="chat":
+                   await self.send(ext_data=json.dumps({"type": "error", "message": f"wave spped model not provide chat"},ensure_ascii=False))
+                
+                elif model_type=="image_editor":
+                    
+                    payload={
+                        "enable_base64_output": False,
+                        "enable_sync_mode": False,
+                        "images":[image],
+                        "prompt":prompt,
+                        "seed":-1
+
+                    }
+                    
+                elif model_type=="text_to_image":
+                  payload={
+                        "enable_base64_output": False,
+                        "enable_sync_mode": False,
+                        "prompt":prompt,
+                        "seed":-1,
+                        "size": f"{height} * {width}" if height and width  else "1024*1024"
+                    }
+
+        
+                
+                # elif model_type=="image_to_video":
+                    
+                #     payload={
+                #     "image": image,
+                #     "prompt": prompt,
+                #     "duration": 5,
+                #     "fps": 24,
+                #     "resolution": "480p",
+                #     "seed": -1
+                #     }
+               
+
+
+                
                 try:
                     ai_response=await database_sync_to_async(wavespeed_ai_call)(
                         model_id=model_id,
@@ -310,6 +365,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                     if ai_response:
                         print("AI RESPONSE FROM WEAVESPEEDAI:",ai_response)
                         images=ai_response.get("images", [])
+                        print(images,"video")
                         images = await sync_to_async(download_and_store_webp)(image_urls=images)
                         images = [img for img in images]
                         print(images)

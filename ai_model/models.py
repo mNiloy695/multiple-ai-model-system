@@ -15,6 +15,12 @@ class AIModelInfo(models.Model):
         # ('meta', 'Meta AI'),
         # ('custom', 'Custom / Self-Hosted'),
     ]
+    MODEL=(
+        ('chat','chat'),
+        ('image_editor','image_editor'),
+       ('text_to_image','text_to_image'),
+        ('image_to_video','image_to_video')
+    )
 
     name = models.CharField(max_length=255, help_text="Name of the AI model, e.g., GPT-4 or Claude 3.")
     version = models.CharField(max_length=50, help_text="Version or build identifier of the model.")
@@ -34,10 +40,10 @@ class AIModelInfo(models.Model):
     )
     description = models.TextField(blank=True,null=True,help_text="Brief description of the model’s purpose or usage context.")
     is_active = models.BooleanField(default=True, help_text="Indicates if the model is currently available for use.")
-    
+    model_type=models.CharField(choices=MODEL,max_length=20,null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    images_generating_models=models.BooleanField(default=False,help_text="Indicates if the model supports image generation")
+    # images_generating_models=models.BooleanField(default=False,help_text="Indicates if the model supports image generation")
     base_cost=models.IntegerField(default=0,help_text="base cost in terms of words or credits for using this model")
 
 
