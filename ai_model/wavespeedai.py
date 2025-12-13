@@ -79,6 +79,7 @@ def wavespeed_ai_call(model_id, api_key, payload=None, poll_interval=0.5, user_i
         status = result.get("status")
 
         if status == "completed":
+            print(f"Task completed in seconds.")
             credit_account.credits -= image_deduct_credit
             credit_account.save()
             user.total_token_used += image_deduct_credit
@@ -93,6 +94,7 @@ def wavespeed_ai_call(model_id, api_key, payload=None, poll_interval=0.5, user_i
             }
 
         elif status == "failed":
+            print("hurrah faild")
             return {"error": result.get("error", f"{model_id} generation failed")}
 
         time.sleep(poll_interval)
