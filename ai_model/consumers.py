@@ -8,6 +8,7 @@ from django.conf import settings
 from django.contrib.auth.models import AnonymousUser
 from django.contrib.auth import get_user_model
 import base64,requests
+from .text_to_video.text_to_video import text_to_video_generation
 
 User = get_user_model()
 
@@ -131,15 +132,15 @@ class ChatConsumer(AsyncWebsocketConsumer):
         try:
             data = json.loads(text_data)
         except json.JSONDecodeError:
-            await self.send(text_data=json.dumps({"type": "error", "message": "Invalid JSON format"}))
+            await self.send(text_data=json.dumps({"type": "error", "message": "Invalid JSON format"},ensure_ascii=False))
             return
         
         if self.user.api_limit<=0:
-            await self.send(text_data=json.dumps({"type":"limit exceed","message":"You exceed today limit watch ads or buy subscription for get more request"}))
+            await self.send(text_data=json.dumps({"type":"limit exceed","message":"You exceed today limit watch ads or buy subscription for get more request"},ensure_ascii=False))
             return 
         
 
-        self.decrement_api_limit(self.user)
+        # self.decrement_api_limit(self.user)
         
      
 
@@ -149,8 +150,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
         height=data.get('height')
         width=data.get('width')
         num_images=data.get('num_images')
-<<<<<<< HEAD
-        print(message_content)
+        duration=data.get('duration')
+
         #set word limit for free trail
 
         if not self.user.subscribed:
@@ -160,11 +161,9 @@ class ChatConsumer(AsyncWebsocketConsumer):
         
 
         await self.decrement_api_limit(self.user)
-        
+        # if ai_response:
+        #        await self.decrement_api_limit(self.user)
 
-=======
->>>>>>> 5b2e615 (image edit model added)
-        
 
         if user_images:
                 images=await sync_to_async(download_and_store_webp)(image_urls=[user_images])
@@ -185,13 +184,13 @@ class ChatConsumer(AsyncWebsocketConsumer):
             self.session_id, self.user, "user", content=message_content, images=user_images
               )
             if saved_message:
-               await self.send(text_data=json.dumps({"type": "new_message", "message": saved_message}))
+               await self.send(text_data=json.dumps({"type": "new_message", "message": saved_message},ensure_ascii=False))
         
 
       
         session_data = await self.get_session_data(self.session_id, self.user)
         if not session_data or not session_data.get("model"):
-            await self.send(text_data=json.dumps({"text": "no available session found"}))
+            await self.send(text_data=json.dumps({"text": "no available session found"},ensure_ascii=False))
             await self.close(1000)
             return 
 
@@ -217,7 +216,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                             images=ai_response.get("images", [])
                         )
                         if saved_ai_message:
-                            await self.send(text_data=json.dumps({"type": "new_message", "message": saved_ai_message}))
+                            await self.send(text_data=json.dumps({"type": "new_message", "message": saved_ai_message},ensure_ascii=False))
                 except Exception as e:
                     await self.send(text_data=json.dumps({"type": "error", "message": f"AI error: {str(e)}"},ensure_ascii=False))
         elif provider=="openai":
@@ -259,7 +258,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                         if saved_ai_message:
                             await self.send(text_data=json.dumps({"type": "new_message", "message": saved_ai_message},ensure_ascii=False))
                 except Exception as e:
-                    await self.send(text_data=json.dumps({"type": "error", "message": f"AI error: {str(e)}"}))
+                    await self.send(text_data=json.dumps({"type": "error", "message": f"AI error: {str(e)}"},ensure_ascii=False))
         
 
 
@@ -286,7 +285,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                             images=ai_response.get("images", [])
                         )
                         if saved_ai_message:
-                            await self.send(text_data=json.dumps({"type": "new_message", "message": saved_ai_message}))
+                            await self.send(text_data=json.dumps({"type": "new_message", "message": saved_ai_message},ensure_ascii=False))
                 except Exception as e:
                     await self.send(text_data=json.dumps({"type": "error", "message": f"AI error: {str(e)}"},ensure_ascii=False))
 
@@ -315,7 +314,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 print(model_type)
                 
                 if model_type=="chat":
-                   await self.send(ext_data=json.dumps({"type": "error", "message": f"wave spped model not provide chat"},ensure_ascii=False))
+                   await self.send(text_data=json.dumps({"type": "error", "message": f"wave spped model not provide chat"},ensure_ascii=False))
                 
                 elif model_type=="image_editor":
                     
@@ -336,24 +335,9 @@ class ChatConsumer(AsyncWebsocketConsumer):
                         "seed":-1,
                         "size": f"{height} * {width}" if height and width  else "1024*1024"
                     }
-
-        
-                
-                # elif model_type=="image_to_video":
-                    
-                #     payload={
-                #     "image": image,
-                #     "prompt": prompt,
-                #     "duration": 5,
-                #     "fps": 24,
-                #     "resolution": "480p",
-                #     "seed": -1
-                #     }
-               
-
-
-                
-                try:
+                                              
+                  try:
+                     
                     ai_response=await database_sync_to_async(wavespeed_ai_call)(
                         model_id=model_id,
                         api_key=api_key,
@@ -378,8 +362,59 @@ class ChatConsumer(AsyncWebsocketConsumer):
                         )
                         if saved_ai_message:
                             await self.send(text_data=json.dumps({"type": "new_message", "message": saved_ai_message},ensure_ascii=False))
-                except Exception as e:
+                  except Exception as e:
                       await self.send(text_data=json.dumps({"type": "error", "message": f"AI error: {str(e)}"},ensure_ascii=False))
+                  
+                elif model_type=="text_to_video":
+                    try:
+                        ai_response=await database_sync_to_async(text_to_video_generation)(
+                            model_id=model_id,
+                            prompt=prompt,
+                            api_key=api_key,
+                            duration=duration,
+                            height=height,
+                            width=width,
+                            seed=seed
+                        )
+                        print("AI RESPONSE FROM WEAVESPEEDAI:",ai_response)
+
+                        if ai_response:
+                         saved_ai_message = await self.save_message(
+                            self.session_id,
+                            self.user,
+                            "ai",
+                            content = "Video generated successfully.",
+                            images=[ai_response]
+                        )
+                        if saved_ai_message:
+                            await self.send(text_data=json.dumps({"type": "new_message", "message": {"text":"Video generated successfully.","video_url":ai_response}},ensure_ascii=False))
+                            
+                    except Exception as e:
+                        await self.send(text_data=json.dumps({"type": "error", "message": f"AI error: {str(e)}"},ensure_ascii=False))
+                        return
+
+
+
+                    
+                    
+
+
+        
+                
+                # elif model_type=="image_to_video":
+                    
+                #     payload={
+                #     "image": image,
+                #     "prompt": prompt,
+                #     "duration": 5,
+                #     "fps": 24,
+                #     "resolution": "480p",
+                #     "seed": -1
+                #     }
+               
+
+
+
 
 
         elif provider=="falai":

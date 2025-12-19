@@ -19,7 +19,8 @@ class AIModelInfo(models.Model):
         ('chat','chat'),
         ('image_editor','image_editor'),
        ('text_to_image','text_to_image'),
-        ('image_to_video','image_to_video')
+        ('image_to_video','image_to_video'),
+        ('text_to_video','text_to_video'),
     )
 
     name = models.CharField(max_length=255, help_text="Name of the AI model, e.g., GPT-4 or Claude 3.")
