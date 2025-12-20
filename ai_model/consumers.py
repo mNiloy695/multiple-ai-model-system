@@ -303,6 +303,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
             output_format = data.get("output_format", "jpeg")
             prompt = data.get("message")
             image=data.get("images",None)
+            resolution=data.get("resolution","1080p")
+            generate_audio=data.get("generate_audio",False)
             print(image)
 
 
@@ -313,9 +315,12 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 model_type=getattr(model,"model_type")
                 print(model_type)
                 
+                #for chat model
+
                 if model_type=="chat":
                    await self.send(text_data=json.dumps({"type": "error", "message": f"wave spped model not provide chat"},ensure_ascii=False))
                 
+                #image editor
                 elif model_type=="image_editor":
                     
                     payload={
@@ -326,7 +331,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
                         "seed":-1
 
                     }
-                    
+                
+                #text to image generation
                 elif model_type=="text_to_image":
                   payload={
                         "enable_base64_output": False,
@@ -364,7 +370,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
                             await self.send(text_data=json.dumps({"type": "new_message", "message": saved_ai_message},ensure_ascii=False))
                   except Exception as e:
                       await self.send(text_data=json.dumps({"type": "error", "message": f"AI error: {str(e)}"},ensure_ascii=False))
-                  
+                
+                #text to video generation
                 elif model_type=="text_to_video":
                     try:
                         ai_response=await database_sync_to_async(text_to_video_generation)(
@@ -374,7 +381,9 @@ class ChatConsumer(AsyncWebsocketConsumer):
                             duration=duration,
                             height=height,
                             width=width,
-                            seed=seed
+                            seed=seed,
+                            resolution=resolution,
+                            generate_audio=generate_audio
                         )
                         print("AI RESPONSE FROM WEAVESPEEDAI:",ai_response)
 
@@ -386,7 +395,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                             content = "Video generated successfully.",
                             images=[ai_response]
                         )
-                        if saved_ai_message:
+                         if saved_ai_message:
                             await self.send(text_data=json.dumps({"type": "new_message", "message": {"text":"Video generated successfully.","video_url":ai_response}},ensure_ascii=False))
                             
                     except Exception as e:
