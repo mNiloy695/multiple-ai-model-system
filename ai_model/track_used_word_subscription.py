@@ -4,7 +4,10 @@ from django.contrib.auth import get_user_model
 User=get_user_model()
 
 def trackUsedWords(user_id,words):
-    user=User.objects.get(id=user_id)
+    try:
+        user=User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        return "User Id not Found"
     subscription=SubscriptionModel.objects.filter(user=user,status="active").first()
     if subscription:
         unused_word=subscription.credits_words-subscription.used_words #2

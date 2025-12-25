@@ -28,7 +28,8 @@ class CustomUserManager(BaseUserManager):
 class CustomUser(AbstractUser):
     username = models.CharField(max_length=150,unique=True,null=True,blank=True)
     email = models.EmailField(unique=True)
-    total_token_used=models.IntegerField(default=0,null=True,blank=True)
+    # total_token_used=models.IntegerField(default=0,null=True,blank=True)
+    total_token_used=models.BigIntegerField(default=0,null=True,blank=True)
     subscribed=models.BooleanField(default=False,null=True,blank=True)
     api_limit=models.IntegerField(default=5)
     word_limit=models.IntegerField(default=400)
@@ -93,6 +94,9 @@ class UserProfile(models.Model):
     updated_at=models.DateTimeField(auto_now=True)
 
 
+#usage log model
 
-
-    
+# class UsageLog(models.Model):
+#     user = models.ForeignKey(User, on_delete=models.CASCADE)
+#     request_id = models.CharField(max_length=255, unique=True)
+#     cost = models.IntegerField()

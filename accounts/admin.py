@@ -34,3 +34,10 @@ class UserProfileAdmin(admin.ModelAdmin):
     list_display = ('id', 'user', 'first_name', 'last_name', 'created_at')
     search_fields = ('user__email', 'first_name', 'last_name')
     ordering = ('id',)
+
+
+# @admin.register(UsageLog)
+# class UsageLogAdmin(admin.ModelAdmin):
+#     list_display = ('id', 'user', 'request_id', 'cost')
+#     search_fields = ('user__email', 'request_id')
+#     ordering = ('id',)

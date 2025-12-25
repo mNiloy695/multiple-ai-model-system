@@ -18,7 +18,7 @@ class AIModelSerializer(serializers.ModelSerializer):
 class AIModelLimitedSerializer(serializers.ModelSerializer):
     class Meta:
         model=AIModelInfo
-        fields=['id','name','model_id','created_at','description','base_url','base_cost']
+        fields=['id','name','model_id','created_at','description','base_url','base_cost','model_type']
         read_only_fields=['created_at','updated_at']
 
 

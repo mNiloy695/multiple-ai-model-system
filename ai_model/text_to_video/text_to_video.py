@@ -1,8 +1,9 @@
 import requests
 import json
 import time
-
-
+from ..track_used_word_subscription import trackUsedWords
+from accounts.models import CreditAccount
+#base cost means cost for 1 second
 data_of_models={
     "openai/sora-2/text-to-video":{
         "size_options":["720*1280","1280*720"],
@@ -36,8 +37,12 @@ data_of_models={
     }
 }
 
+from django.contrib.auth import get_user_model
+from django.db import transaction
+User=get_user_model()
 
-def text_to_video_generation(model_id, prompt, api_key, duration, height, width, seed=-1,resolution="1080p",generate_audio=False):
+
+def text_to_video_generation(model_id, prompt, api_key, duration, height, width, seed=-1,resolution="1080p",generate_audio=False,base_cost=500,user_id=None):
     API_KEY = api_key
     submit_url = f"https://api.wavespeed.ai/api/v3/{model_id}"
 
@@ -45,18 +50,46 @@ def text_to_video_generation(model_id, prompt, api_key, duration, height, width,
         "Content-Type": "application/json",
         "Authorization": f"Bearer {API_KEY}",
     }
+    print("user",user_id)
+    try:
+        user=User.objects.select_related('creditaccount').get(id=user_id)
+        
+    except User.DoesNotExist:
+        raise ValueError("Invalid user account ID")
+    
+    #base cost means cost for 1 second
+    
+    total_base_cost=base_cost*duration
 
+    try:
+        user_account=user.creditaccount
+        if user_account.credits<total_base_cost:
+            raise ValueError("Insufficient credits to perform this operation.")
+    except CreditAccount.DoesNotExist:
+        raise ValueError("Invalid user ID")
+    
+
+    if model_id not in data_of_models:
+        raise ValueError(f"Model ID {model_id} not supported.")
+    
+
+    
+    
     #for sora-2/text-to-video
     
     if model_id=="openai/sora-2/text-to-video":
          accourate_data_for_model=data_of_models["openai/sora-2/text-to-video"]
+
+
          if not height and not width:
              width,height=1280,720
 
          if f"{width}*{height}" not in accourate_data_for_model["size_options"]:
             height,width=1280,720
          if duration not in accourate_data_for_model["duration_options"]:
-            raise ValueError(f"Invalid duration {duration}. Available options: {accourate_data_for_model['duration_options']}") 
+            raise ValueError(f"Invalid duration {duration}. Available options: {accourate_data_for_model['duration_options']}")
+         
+
 
          payload = {
         "duration": duration,
@@ -136,7 +169,7 @@ def text_to_video_generation(model_id, prompt, api_key, duration, height, width,
 
     result = response.json()["data"]
     request_id = result["id"]
-
+    print("total_base_cost",total_base_cost)
     # 🔹 Poll result
     result_url = f"https://api.wavespeed.ai/api/v3/predictions/{request_id}/result"
 
@@ -153,6 +186,19 @@ def text_to_video_generation(model_id, prompt, api_key, duration, height, width,
 
         if status == "completed":
             end = time.time()
+            with transaction.atomic():
+                user_account=CreditAccount.objects.select_for_update().get(user=user)
+                user = User.objects.select_for_update().get(id=user_id)
+
+                if user_account.credits<total_base_cost:
+                    raise ValueError("Insufficient credits to perform this operation.")
+                
+                user_account.credits-=total_base_cost
+            
+                trackUsedWords(user.id,total_base_cost)
+                user.total_token_used+=total_base_cost
+                user.save(update_fields=['total_token_used'])
+                user_account.save(update_fields=['credits'])
             print(f"Completed in {end - begin:.2f}s")
             return data["outputs"][0]
         

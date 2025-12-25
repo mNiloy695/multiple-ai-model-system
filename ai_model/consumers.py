@@ -9,6 +9,7 @@ from django.contrib.auth.models import AnonymousUser
 from django.contrib.auth import get_user_model
 import base64,requests
 from .text_to_video.text_to_video import text_to_video_generation
+from .image_tool.image_tool import image_tool_via_wavespeedai
 
 User = get_user_model()
 
@@ -23,6 +24,7 @@ from .image_to_url_save import download_and_store_webp
 from .fal_ai import call_fal_ai
 from asgiref.sync import sync_to_async
 from django.db import transaction
+from .image_upscaler.image_upscaler import image_upscaler_wavespeed_ai
 class ChatConsumer(AsyncWebsocketConsumer):
     # max_message_size = 10 * 1024 * 1024 
     @database_sync_to_async
@@ -166,7 +168,9 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
 
         if user_images:
-                images=await sync_to_async(download_and_store_webp)(image_urls=[user_images])
+                if isinstance(user_images,str):
+                  user_images=[user_images]
+                images=await sync_to_async(download_and_store_webp)(image_urls=user_images)
                 images = [img for img in images]
                         
                 saved_message = await self.save_message(
@@ -305,6 +309,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
             image=data.get("images",None)
             resolution=data.get("resolution","1080p")
             generate_audio=data.get("generate_audio",False)
+        
             print(image)
 
 
@@ -349,7 +354,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
                         api_key=api_key,
                         payload=payload,
                         user_id=self.user.id,
-                        base_cost=base_cost
+                        base_cost=base_cost,
+                        use_id= self.user.id
                     )
                     
                     if ai_response:
@@ -383,7 +389,9 @@ class ChatConsumer(AsyncWebsocketConsumer):
                             width=width,
                             seed=seed,
                             resolution=resolution,
-                            generate_audio=generate_audio
+                            generate_audio=generate_audio,
+                            base_cost=base_cost,
+                            user_id=self.user.id
                         )
                         print("AI RESPONSE FROM WEAVESPEEDAI:",ai_response)
 
@@ -401,11 +409,68 @@ class ChatConsumer(AsyncWebsocketConsumer):
                     except Exception as e:
                         await self.send(text_data=json.dumps({"type": "error", "message": f"AI error: {str(e)}"},ensure_ascii=False))
                         return
+                elif model_type=="image_tool":
+                    print("images",image[0])
+                    style=data.get("style","default")
+                    target_language=data.get('target_language',"english")
+                    target_resolution=data.get("target_resolution","4k")
+                    try:
+                        ai_response=await database_sync_to_async(image_tool_via_wavespeedai)(
+                            model_id=model_id,
+                            api_key=api_key,
+                            user_id=self.user.id,
+                            prompt=prompt,
+                            image_url=image[0] if image else None,
+                            base_cost= base_cost,
+                            style=style,
+                            target_language=target_language,
+                            target_resolution=target_resolution
+                        )
+                        print("AI RESPONSE FROM WEAVESPEEDAI:",ai_response)
 
+                        if ai_response:
+                            saved_ai_message=await self.save_message(
+                                self.session_id,
+                                self.user,
+                                "ai",
+                                content="Image processed successfully",
+                                images=[ai_response]
+                            )
+                            if saved_ai_message:
+                                await self.send(text_data=json.dumps({"type": "new_message", "message": saved_ai_message},ensure_ascii=False))
+                    except Exception as e:
+                        await self.send(text_data=json.dumps({"type": "error", "message": f"AI error: {str(e)}"},ensure_ascii=False))
+                        return
+                elif model_type=="image_upscaler":
+                    try:
+                        target_resolution=data.get("target_resolution","4k")
+                        ai_response=await database_sync_to_async(image_upscaler_wavespeed_ai)(
+                            model_id=model_id,
+                            api_key=api_key,
+                            user_id=self.user.id,
+                            image_url=image[0] if image else None,
+                            base_cost= base_cost,
+                            target_resolution=target_resolution
+                        )
+                        print("AI RESPONSE FROM WEAVESPEEDAI:",ai_response)
 
-
+                        if ai_response:
+                            saved_ai_message=await self.save_message(
+                                self.session_id,
+                                self.user,
+                                "ai",
+                                content="Image upscaled successfully",
+                                images=[ai_response]
+                            )
+                            if saved_ai_message:
+                                await self.send(text_data=json.dumps({"type": "new_message", "message": saved_ai_message},ensure_ascii=False))
+                    except Exception as e:
+                        await self.send(text_data=json.dumps({"type": "error", "message": f"AI error: {str(e)}"},ensure_ascii=False))
+                        return
                     
-                    
+
+
+    
 
 
         
