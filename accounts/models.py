@@ -94,7 +94,7 @@ class UserProfile(models.Model):
     updated_at=models.DateTimeField(auto_now=True)
 
 
-#usage log model
+# #usage log model
 
 # class UsageLog(models.Model):
 #     user = models.ForeignKey(User, on_delete=models.CASCADE)

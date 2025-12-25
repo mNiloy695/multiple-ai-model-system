@@ -12,7 +12,7 @@ from .text_to_video.text_to_video import text_to_video_generation
 from .image_tool.image_tool import image_tool_via_wavespeedai
 
 User = get_user_model()
-
+from django.db.models import F
 
 from .leonardo import leonardo_response
 from .openai_func  import gpt_response
@@ -62,11 +62,21 @@ class ChatConsumer(AsyncWebsocketConsumer):
             return None
    
 
-    @database_sync_to_async  
-    def decrement_api_limit(self, user):
-       with transaction.atomic():
-         user.api_limit -= 1
-         user.save()
+    # @database_sync_to_async  
+    # def decrement_api_limit(self, user):
+    #    with transaction.atomic():
+    #      user.api_limit -= 1
+    #      user.save()
+
+    @database_sync_to_async
+    def decrement_api_limit(self, user_id):
+        updated = User.objects.filter(
+        id=user_id.id,
+        api_limit__gt=0
+    ).update(api_limit=F('api_limit') - 1)
+        return updated  # 0 = limit exceeded
+
+    
 
     @database_sync_to_async
     def save_message(self, session_id, user, sender, content=None, images=None):
@@ -136,8 +146,9 @@ class ChatConsumer(AsyncWebsocketConsumer):
         except json.JSONDecodeError:
             await self.send(text_data=json.dumps({"type": "error", "message": "Invalid JSON format"},ensure_ascii=False))
             return
+        fresh_user=await database_sync_to_async(User.objects.get)(id=self.user.id)
         
-        if self.user.api_limit<=0:
+        if fresh_user.api_limit<=0:
             await self.send(text_data=json.dumps({"type":"limit exceed","message":"You exceed today limit watch ads or buy subscription for get more request"},ensure_ascii=False))
             return 
         
@@ -161,7 +172,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
             if len(message_content_words)>400:
                 message_content=str(message_content[:400])
         
-
+        fresh_user=await database_sync_to_async(User.objects.get)(id=self.user.id)
+        self.user=fresh_user
         await self.decrement_api_limit(self.user)
         # if ai_response:
         #        await self.decrement_api_limit(self.user)
@@ -202,6 +214,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
         provider = getattr(model, "provider", "").lower()
 
         if provider == "google":
+            fresh_user=await database_sync_to_async(User.objects.get)(id=self.user.id)
+            self.user=fresh_user
             model_id = getattr(model, "model_id", None)
             api_key = getattr(model, "api_key", None)
             if model_id and api_key:
@@ -228,7 +242,9 @@ class ChatConsumer(AsyncWebsocketConsumer):
             api_key = getattr(model, "api_key", None)
             num_images=data.get("num_images",1)
             height=data.get("height",512)
-            width=data.get("width",512)            
+            width=data.get("width",512)
+            # fresh_user=await database_sync_to_async(User.objects.get)(id=self.user.id)
+            # self.user=fresh_user         
             if model_id and api_key:
                 try:
                     base_cost=getattr(model,"base_cost",500)
@@ -272,6 +288,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
             num_images=data.get("num_images",1)
             width=data.get("width",512)
             height=data.get("height",512)
+            # fresh_user=await database_sync_to_async(User.objects.get)(id=self.user.id)
+            # self.user=fresh_user
 
             if model_id and api_key:
                 # print("i am in the leonardo")
@@ -414,6 +432,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
                     style=data.get("style","default")
                     target_language=data.get('target_language',"english")
                     target_resolution=data.get("target_resolution","4k")
+                    # fresh_user=await database_sync_to_async(User.objects.get)(id=self.user.id)
+                    # self.user=fresh_user
                     try:
                         ai_response=await database_sync_to_async(image_tool_via_wavespeedai)(
                             model_id=model_id,
@@ -499,6 +519,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
             steps=data.get("steps",50)
             cfg_scale=data.get("cfg_scale",7.0)
             seed=data.get("seed",6252023)
+            # fresh_user=await database_sync_to_async(User.objects.get)(id=self.user.id)
+            # self.user=fresh_user
 
             if model_id and api_key:
                 try:

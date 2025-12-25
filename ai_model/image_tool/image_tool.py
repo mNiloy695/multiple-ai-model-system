@@ -122,6 +122,8 @@ def image_tool_via_wavespeedai(image_url, prompt,api_key,model_id,base_cost,user
 
     headers = {"Authorization": f"Bearer {API_KEY}"}
 
+#5ae107969768454dbb1d7e7d32a5051e
+
     # Poll for results
     while True:
         response = requests.get(url, headers=headers)
@@ -135,9 +137,13 @@ def image_tool_via_wavespeedai(image_url, prompt,api_key,model_id,base_cost,user
                 data = result["outputs"][0]
                 user_account.credits-=base_cost
                 user_account.save(update_fields=['credits'])
-                trackUsedWords(user_id,base_cost)
-                user.total_token_used+=base_cost
-                user.save()
+                value = trackUsedWords(user_id,base_cost)
+                print("track used word function return value:",value)
+                # print("tot; token used before addition is........ ",user.total_token_used)
+                # user.total_token_used+=base_cost
+                # print("The total token used before save addition is........ ",user.total_token_used)
+                # user.save(update_fields=['total_token_used'])
+                # print("The total token used after save addition is........ ",user.total_token_used)
 
                 print(f"Task completed. URL: {url}")
 
