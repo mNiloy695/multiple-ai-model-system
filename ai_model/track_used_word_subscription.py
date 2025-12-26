@@ -29,12 +29,7 @@ def trackUsedWords(user_id,words):
     # )
     # user.refresh_from_db()
     # print("The previous token_used is ............",user.total_token_used)
-    print("The previous token_used is ............",user.total_token_used)
-    print("words to add ............",words)
-    user.total_token_used=user.total_token_used+words
-    print("The total token used after addition is........ ",user.total_token_used)
-    user.save(update_fields=['total_token_used'])
-    print("After saving the user total_token_used is ............",user.total_token_used)
+  
    
     # print("the updated token_used is ..............",user.total_token_used)
 

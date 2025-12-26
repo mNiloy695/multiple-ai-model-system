@@ -26,10 +26,21 @@ def image_tool_via_wavespeedai(image_url, prompt,api_key,model_id,base_cost,user
         "Content-Type": "application/json",
         "Authorization": f"Bearer {API_KEY}",
     }
-
-
     if not image_url:
         return {"error":"Image URL is required for image tool."}
+    try:
+        user=User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        return {"error":"User Id not Found"}
+    
+    try:
+        user_account=user.creditaccount
+        if user_account.credits<base_cost:
+            raise ValueError("Insufficient credits to perform this operation.")
+    except CreditAccount.DoesNotExist:
+        return {"error":"Invalid user ID"}
+
+  
     
     if model_id=="wavespeed-ai/image-text-remover":
         payload={
@@ -91,18 +102,7 @@ def image_tool_via_wavespeedai(image_url, prompt,api_key,model_id,base_cost,user
         raise ValueError(f"Model ID {model_id} not supported.")
 
 
-    try:
-        user=User.objects.get(id=user_id)
-    except User.DoesNotExist:
-        return {"error":"User Id not Found"}
-    
-    try:
-        user_account=user.creditaccount
-        if user_account.credits<base_cost:
-            raise ValueError("Insufficient credits to perform this operation.")
-    except CreditAccount.DoesNotExist:
-        return {"error":"Invalid user ID"}
-
+ 
 
     begin = time.time()
     response = requests.post(url, headers=headers, data=json.dumps(payload))
@@ -135,18 +135,12 @@ def image_tool_via_wavespeedai(image_url, prompt,api_key,model_id,base_cost,user
                 end = time.time()
                 print(f"Task completed in {end - begin} seconds.")
                 data = result["outputs"][0]
-                user_account.credits-=base_cost
-                user_account.save(update_fields=['credits'])
-                value = trackUsedWords(user_id,base_cost)
-                print("track used word function return value:",value)
-                # print("tot; token used before addition is........ ",user.total_token_used)
-                # user.total_token_used+=base_cost
-                # print("The total token used before save addition is........ ",user.total_token_used)
-                # user.save(update_fields=['total_token_used'])
-                # print("The total token used after save addition is........ ",user.total_token_used)
-
-                print(f"Task completed. URL: {url}")
-
+                with transaction.atomic():
+                    user_account.credits-=int(base_cost)
+                    user.total_token_used+=int(base_cost)
+                    user.save(update_fields=['total_token_used'])
+                    user_account.save(update_fields=['credits'])
+                trackUsedWords(user_id,base_cost)
                 return data
 
             elif status == "failed":

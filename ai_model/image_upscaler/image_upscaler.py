@@ -17,17 +17,17 @@ def  image_upscaler_wavespeed_ai(model_id,api_key,user_id,base_cost,image_url,ta
     print("Hello from WaveSpeedAI!")
     API_KEY = api_key
 
-    # try:
-    #     user=User.objects.get(id=user_id)
-    # except User.DoesNotExist:
-    #     return {"error":"User Id not Found"}
+    try:
+        user=User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        return {"error":"User Id not Found"}
     
-    # try:
-    #     user_account=user.creditaccount
-    #     if user_account.credits<base_cost:
-    #         raise ValueError("Insufficient credits to perform this operation.")
-    # except CreditAccount.DoesNotExist:
-    #     return {"error":"Invalid user ID"}
+    try:
+        user_account=user.creditaccount
+        if user_account.credits<base_cost:
+            raise ValueError("Insufficient credits to perform this operation.")
+    except CreditAccount.DoesNotExist:
+        return {"error":"Invalid user ID"}
 
 
     url = f"https://api.wavespeed.ai/api/v3/{model_id}"
@@ -98,16 +98,10 @@ def  image_upscaler_wavespeed_ai(model_id,api_key,user_id,base_cost,image_url,ta
                     
                     user_account.credits-=int(base_cost)
                     
-                    # user.total_token_used+=int(base_cost)
-                    print("The total token used after addition is........ ",user.total_token_used)
+                    user.total_token_used+=int(base_cost)
                     # print("the user is " ,user)
-                    # user.save(update_fields=['total_token_used'])
-                    from django.db.models import F
-                    User.objects.filter(id=user_id).update( total_token_used=F("total_token_used") + int(base_cost)
-)
-                    print("the updated token_used is ..............",user.total_token_used)
+                    user.save(update_fields=['total_token_used'])
                     user_account.save(update_fields=['credits'])
-                    print("base_cost",base_cost)
                 trackUsedWords(user_id,base_cost)
                 return url
                 
