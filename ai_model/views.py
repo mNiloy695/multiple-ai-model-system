@@ -7,9 +7,12 @@ from rest_framework import viewsets
 from .models import AIModelInfo,ChatSession
 from rest_framework import permissions
 from rest_framework.response import Response
+from django_filters.rest_framework import DjangoFilterBackend
 class AImodelView(viewsets.ModelViewSet):
     queryset=AIModelInfo.objects.all()
     serializer=AIModelSerializer
+    filter_backends=[DjangoFilterBackend]
+    filterset_fields=['model_id','model_type','provider']
     # permission_classes=[permissions.IsAdminUser]
 
     def get_permissions(self):
@@ -21,9 +24,8 @@ class AImodelView(viewsets.ModelViewSet):
         
         if self.request.user and self.request.user.is_staff:
             return self.queryset.all()
-        
-        return self.queryset.filter(is_active=True).only('id','name','model_id','created_at','description','base_url')
-    
+        return self.queryset.filter(is_active=True).only('id','name','model_id','created_at','description','base_url','provider','model_type')
+
     def get_serializer_class(self):
         if self.request.user and self.request.user.is_staff:
             return AIModelSerializer

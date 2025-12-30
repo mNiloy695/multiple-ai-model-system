@@ -18,9 +18,8 @@ class AIModelSerializer(serializers.ModelSerializer):
 class AIModelLimitedSerializer(serializers.ModelSerializer):
     class Meta:
         model=AIModelInfo
-        fields=['id','name','model_id','created_at','description','base_url','base_cost','model_type']
+        fields=['id','name','model_id','created_at','description','base_url','base_cost','model_type','provider']
         read_only_fields=['created_at','updated_at']
-
 
 
 class ChatMessageSerializer(serializers.ModelSerializer):

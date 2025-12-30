@@ -71,9 +71,15 @@ INSTALLED_APPS = [
     'plan',
     'invoices',
     'ads_rewards',
+    'django_filters',
+
 ]
 
-
+REST_FRAMEWORK = {
+    'DEFAULT_FILTER_BACKENDS': [
+        'django_filters.rest_framework.DjangoFilterBackend',
+    ]
+}
 
 # Email Settings
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
