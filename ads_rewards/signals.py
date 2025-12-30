@@ -7,4 +7,4 @@ def add_api_limit_on_reward_creation_time(sender,instance,created,**kwargs):
     if created:
         user=instance.user
         user.api_limit+=1
-        user.save()
+        user.save() 

@@ -25,6 +25,19 @@ from .fal_ai import call_fal_ai
 from asgiref.sync import sync_to_async
 from django.db import transaction
 from .image_upscaler.image_upscaler import image_upscaler_wavespeed_ai
+
+def detect_media_easy(url):
+    url = url.lower()
+
+    if url.endswith((".jpg", ".jpeg", ".png", ".gif", ".webp")):
+        return "image"
+
+    if url.endswith((".mp4", ".mov", ".avi", ".mkv", ".webm")):
+        return "video"
+
+    return "unknown"
+
+
 class ChatConsumer(AsyncWebsocketConsumer):
     # max_message_size = 10 * 1024 * 1024 
     @database_sync_to_async
@@ -182,7 +195,14 @@ class ChatConsumer(AsyncWebsocketConsumer):
         if user_images:
                 if isinstance(user_images,str):
                   user_images=[user_images]
-                images=await sync_to_async(download_and_store_webp)(image_urls=user_images)
+                detect_image_or_video=await sync_to_async(detect_media_easy)(user_images[0] if user_images else None)
+                if detect_image_or_video =="unknown":
+                    await self.send(json.dumps({"error":"unknown link select image or video"}))
+                    return
+                elif detect_image_or_video=="image":
+                    images=await sync_to_async(download_and_store_webp)(image_urls=user_images)
+                if detect_image_or_video =="video":
+                    images=user_images
                 images = [img for img in images]
                         
                 saved_message = await self.save_message(
@@ -256,6 +276,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
                     if ai_response:
                         image_blocks=[]
                         images=ai_response.get("images", [])
+
+
                         images = await sync_to_async(download_and_store_webp)(image_urls=images)
                         images = [img for img in images]
                         # print(images)
@@ -461,7 +483,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                     except Exception as e:
                         await self.send(text_data=json.dumps({"type": "error", "message": f"AI error: {str(e)}"},ensure_ascii=False))
                         return
-                elif model_type=="image_upscaler":
+                elif model_type=="video_upscaler":
                     try:
                         target_resolution=data.get("target_resolution","4k")
                         ai_response=await database_sync_to_async(image_upscaler_wavespeed_ai)(
@@ -487,6 +509,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                     except Exception as e:
                         await self.send(text_data=json.dumps({"type": "error", "message": f"AI error: {str(e)}"},ensure_ascii=False))
                         return
+                
                     
 
 

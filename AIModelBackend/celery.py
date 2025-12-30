@@ -21,10 +21,10 @@ app.autodiscover_tasks()
 
 # Example beat schedule
 app.conf.beat_schedule = {
-    'update-expired-subscriptions-every-midnight': {
-        'task': 'plan.tasks.update_expired_subscriptions',
-        'schedule': crontab(hour=0, minute=0),
-    },
+    # 'update-expired-subscriptions-every-midnight': {
+    #     'task': 'plan.tasks.update_expired_subscriptions',
+    #     'schedule': crontab(hour=0, minute=0),
+    # },
      'delete-old-ai-images-daily': {
         'task': 'ai_model.tasks.delete_old_images',  # path to the new task
         'schedule': crontab(hour=0, minute=0),    # run daily at midnight

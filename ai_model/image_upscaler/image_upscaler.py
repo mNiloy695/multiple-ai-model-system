@@ -17,6 +17,13 @@ def  image_upscaler_wavespeed_ai(model_id,api_key,user_id,base_cost,image_url,ta
     print("Hello from WaveSpeedAI!")
     API_KEY = api_key
 
+    if model_id !="wavespeed-ai/flashvsr":
+        # return {"error":'Image upscaler only support wavespeed-ai/flashvsr model'}
+        raise ValueError("Image upscaler only support wavespeed-ai/flashvsr model")
+    if target_resolution not in ['1080p','720p','2k','4k']:
+        raise ValueError("The targeted resulation can be 1080p/720p/2k/4k")
+    
+
     try:
         user=User.objects.get(id=user_id)
     except User.DoesNotExist:
@@ -37,15 +44,12 @@ def  image_upscaler_wavespeed_ai(model_id,api_key,user_id,base_cost,image_url,ta
         "Authorization": f"Bearer {API_KEY}",
     }
 
-    possible_resolutions = ["2k", "4k", "8k"]
-    if target_resolution not in possible_resolutions:
-        raise ValueError(f"Invalid target resolution {target_resolution}. Available options: {possible_resolutions}")
+    # possible_resolutions = ["2k", "4k", "8k"]
+    # if target_resolution not in possible_resolutions:
+    #     raise ValueError(f"Invalid target resolution {target_resolution}. Available options: {possible_resolutions}")
     
     payload = {
-        "enable_base64_output": False,
-        "enable_sync_mode": False,
-        "image": image_url,
-        "output_format": "jpeg",
+        "video": image_url,
         "target_resolution": target_resolution if target_resolution else "4k"
     }
 

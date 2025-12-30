@@ -11,7 +11,7 @@ from rest_framework import viewsets
 from .serializers import PlanSerializer
 
 from django.contrib.auth import get_user_model
-from .models import SubscriptionModel
+# from .models import SubscriptionModel
 User=get_user_model()
 
 
@@ -25,67 +25,67 @@ class PlanView(viewsets.ModelViewSet):
 
 
 
-stripe.api_key = settings.STRIPE_SECRET_KEY
-print("stripe apie kye",stripe.api_key)
-
-class CreateCheckoutSessionView(APIView):
-    permission_classes=[permissions.IsAuthenticated]
-
-    def post(self, request, *args, **kwargs):
-        try:
-            data = request.data
-            plan_id=data.get('plan')
-            user=request.user
-
-            try: 
-                plan=PlanModel.objects.get(id=plan_id)
-            except Exception as e:
-                 return Response({"error:":"Plan Model not found"}) 
-            # subscription=None
-            print(plan.subscription_duration,"plan")
-            if not plan.subscription_duration=="one-time" and user.subscribed:
-                subscription=SubscriptionModel.objects.filter(user=user,status='active').first()
-
-                if subscription:
-                       previous_subs_duration_type=subscription.duration_type
-                       new_req_subs_duration_type=plan.subscription_duration
-
-                       if new_req_subs_duration_type==previous_subs_duration_type:
-                          return Response({"message":f"Your {previous_subs_duration_type} Subscription already active Upgrade it or Wait for expired or Top Up one time  credits"})
-                       if previous_subs_duration_type=="yearly" :
-                          return Response({"message":"Go With One Time Top Up or Wait Until the date expire of your subscription"})
-                       if previous_subs_duration_type=="monthly" and new_req_subs_duration_type=='weekly':
-                         return Response({"message":"Go With One Time Top Up or Wait Until the date expire of your subscription"})
+# stripe.api_key = settings.STRIPE_SECRET_KEY
 
 
+# class CreateCheckoutSessionView(APIView):
+#     permission_classes=[permissions.IsAuthenticated]
 
-            if not plan.stripe_product_price_id:
-                return Response({"error": "Price ID is required the plan not have price id"}, status=status.HTTP_400_BAD_REQUEST)
-            price_id=plan.stripe_product_price_id
-            print(price_id)
+#     def post(self, request, *args, **kwargs):
+#         try:
+#             data = request.data
+#             # plan_id=data.get('plan')
+#             user=request.user
+
+            # try: 
+            #     plan=PlanModel.objects.get(id=plan_id)
+            # except Exception as e:
+            #      return Response({"error:":"Plan Model not found"}) 
+            # # subscription=None
+            # print(plan.subscription_duration,"plan")
+            # if not plan.subscription_duration=="one-time" and user.subscribed:
+            #     subscription=SubscriptionModel.objects.filter(user=user,status='active').first()
+
+            #     if subscription:
+            #            previous_subs_duration_type=subscription.duration_type
+            #            new_req_subs_duration_type=plan.subscription_duration
+
+            #            if new_req_subs_duration_type==previous_subs_duration_type:
+            #               return Response({"message":f"Your {previous_subs_duration_type} Subscription already active Upgrade it or Wait for expired or Top Up one time  credits"})
+            #            if previous_subs_duration_type=="yearly" :
+            #               return Response({"message":"Go With One Time Top Up or Wait Until the date expire of your subscription"})
+            #            if previous_subs_duration_type=="monthly" and new_req_subs_duration_type=='weekly':
+            #              return Response({"message":"Go With One Time Top Up or Wait Until the date expire of your subscription"})
+
+
+
+            # if not plan.stripe_product_price_id:
+            #     return Response({"error": "Price ID is required the plan not have price id"}, status=status.HTTP_400_BAD_REQUEST)
+            # price_id=plan.stripe_product_price_id
+            # print(price_id)
             
-            session = stripe.checkout.Session.create(
-                payment_method_types=["card",],
+    #         session = stripe.checkout.Session.create(
+    #             payment_method_types=["card",],
                 
-                line_items=[{
-                    "price": price_id,
-                    "quantity": 1,
-                }],
-                mode="payment",
-                metadata={
-        "user_id": str(user.id),
-        "words": str(plan.words_or_credits),
-        "price_id":str(price_id),
-        # "subscription_id": subscription.id if subscription else None 
-    },
-                success_url="http://127.0.0.1:8081/api/v1/success?session_id={CHECKOUT_SESSION_ID}",
-                cancel_url="http://127.0.0.1:8081/api/v1/cancel",
-            )
+    #             line_items=[{
+    #                 "price": price_id,
+    #                 "quantity": 1,
+    #             }],
+    #             mode="payment",
+    #             metadata={
+    #     "user_id": str(user.id),
+    #     "words": str(plan.words_or_credits),
+    #     "price_id":str(price_id),
+    #     # "subscription_id": subscription.id if subscription else None 
+    # },
+    #             success_url="http://127.0.0.1:8081/api/v1/success?session_id={CHECKOUT_SESSION_ID}",
+    #             cancel_url="http://127.0.0.1:8081/api/v1/cancel",
+    #         )
 
-            return Response({"checkout_url": session.url})
+    #         return Response({"checkout_url": session.url})
 
-        except Exception as e:
-            return Response({"error ms": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+    #     except Exception as e:
+    #         return Response({"error ms": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
 
@@ -142,7 +142,7 @@ from django.shortcuts import get_object_or_404
 import requests
 from invoices.models import InvoiceModel as Invoice
 
-from .serializers import SubscriptionSerializer
+# from .serializers import SubscriptionSerializer
 from datetime import datetime,timezone,timedelta
 
 from accounts.models import CreditAccount,CreditTransaction
@@ -162,60 +162,60 @@ class VerifyGooglePurchaseView(APIView):
             return Response({
                 "error":"plan model not found"
             })
-        if not plan.subscription_duration=="one-time" and user.subscribed:
-                subscription=SubscriptionModel.objects.filter(user=user,status='active').first()
-                if subscription:
-                       previous_subs_duration_type=subscription.duration_type
-                       new_req_subs_duration_type=plan.subscription_duration
+        # if not plan.subscription_duration=="one-time" and user.subscribed:
+        #         subscription=SubscriptionModel.objects.filter(user=user,status='active').first()
+        #         if subscription:
+        #                previous_subs_duration_type=subscription.duration_type
+        #                new_req_subs_duration_type=plan.subscription_duration
 
-                       if new_req_subs_duration_type==previous_subs_duration_type:
-                          return Response({"message":f"Your {previous_subs_duration_type} Subscription already active Upgrade it or Wait for expired or Top Up one time  credits"})
-                       if previous_subs_duration_type=="yearly" :
-                          return Response({"message":"Go With One Time Top Up or Wait Until the date expire of your subscription"})
-                       if previous_subs_duration_type=="monthly" and new_req_subs_duration_type=='weekly':
-                         return Response({"message":"Go With One Time Top Up or Wait Until the date expire of your subscription"})
-        if plan.subscription_duration !="one-time":
-                    expire_date=None
-                    if plan.subscription_duration=="weekly":
-                        expire_date=datetime.now(timezone.utc)+timedelta(days=7)
-                    elif plan.subscription_duration=="monthly":
-                        expire_date=datetime.now(timezone.utc)+timedelta(days=30)
-                    elif plan.subscription_duration=="yearly":
-                        expire_date=datetime.now(timezone.utc)+timedelta(days=365)
+        #                if new_req_subs_duration_type==previous_subs_duration_type:
+        #                   return Response({"message":f"Your {previous_subs_duration_type} Subscription already active Upgrade it or Wait for expired or Top Up one time  credits"})
+        #                if previous_subs_duration_type=="yearly" :
+        #                   return Response({"message":"Go With One Time Top Up or Wait Until the date expire of your subscription"})
+        #                if previous_subs_duration_type=="monthly" and new_req_subs_duration_type=='weekly':
+        #                  return Response({"message":"Go With One Time Top Up or Wait Until the date expire of your subscription"})
+        # if plan.subscription_duration !="one-time":
+        #             expire_date=None
+        #             if plan.subscription_duration=="weekly":
+        #                 expire_date=datetime.now(timezone.utc)+timedelta(days=7)
+        #             elif plan.subscription_duration=="monthly":
+        #                 expire_date=datetime.now(timezone.utc)+timedelta(days=30)
+        #             elif plan.subscription_duration=="yearly":
+        #                 expire_date=datetime.now(timezone.utc)+timedelta(days=365)
 
-                    # subscription_id=metadata.get('subscription_id')
-                    subs,created=SubscriptionModel.objects.get_or_create(
-                    user=user,
-                    plan=plan,
-                    status="active",
-                    defaults={
-                    "price":plan.amount,
-                    "credits_words":plan.words_or_credits,
-                    "used_words":0,
-                    "duration_type":plan.subscription_duration,
-                    "start_date":datetime.now(timezone.utc),
-                    "expire_date":expire_date,
+        #             # subscription_id=metadata.get('subscription_id')
+        #             subs,created=SubscriptionModel.objects.get_or_create(
+        #             user=user,
+        #             plan=plan,
+        #             status="active",
+        #             defaults={
+        #             "price":plan.amount,
+        #             "credits_words":plan.words_or_credits,
+        #             "used_words":0,
+        #             "duration_type":plan.subscription_duration,
+        #             "start_date":datetime.now(timezone.utc),
+        #             "expire_date":expire_date,
                     
-                    }
-                    )
-                    print("subs ",subs.status),
-                    print("created",created)
+        #             }
+        #             )
+        #             print("subs ",subs.status),
+        #             print("created",created)
                    
-                    if not created:
+        #             if not created:
 
-                        subs.price=plan.amount
-                        subs.credits_words+=plan.words_or_credits
-                        subs.used_words=0
-                        subs.duration_type=plan.subscription_duration
-                        subs.start_date=datetime.now(timezone.utc)
-                        subs.expire_date=expire_date
+        #                 subs.price=plan.amount
+        #                 subs.credits_words+=plan.words_or_credits
+        #                 subs.used_words=0
+        #                 subs.duration_type=plan.subscription_duration
+        #                 subs.start_date=datetime.now(timezone.utc)
+        #                 subs.expire_date=expire_date
                         
-                        subs.save()
-                    user.subscribed=True
-                    user.save()       
+        #                 subs.save()
+        #             user.subscribed=True
+        #             user.save()       
         
         
-        product_id = plan.stripe_product_price_id
+        # product_id = plan.stripe_product_price_id
 
         # 2️⃣ Create credentials from service account
         # credentials = service_account.Credentials.from_service_account_file(
@@ -328,10 +328,10 @@ class VerifyGooglePurchaseView(APIView):
 
 
 
-class SubscriptionView(viewsets.ModelViewSet):
-    queryset=SubscriptionModel.objects.prefetch_related('user').select_related('plan').order_by("-created_at")
-    serializer_class=SubscriptionSerializer
-    permission_classes=[permissions.IsAuthenticated]
+# class SubscriptionView(viewsets.ModelViewSet):
+#     queryset=SubscriptionModel.objects.prefetch_related('user').select_related('plan').order_by("-created_at")
+#     serializer_class=SubscriptionSerializer
+#     permission_classes=[permissions.IsAuthenticated]
 
 
 

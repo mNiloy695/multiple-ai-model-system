@@ -22,9 +22,11 @@ class AIModelInfo(models.Model):
         ('image_to_video','image_to_video'),
         ('text_to_video','text_to_video'),
         ('image_tool','image_tool'),
-        ('image_upscaler','image_upscaler'),
+        # ('image_upscaler','image_upscaler'),
+        ('video_upscaler','video_upscaler'),
     )
-
+    image=models.ImageField(upload_to='media/profile/')
+    logo=models.ImageField(upload_to='media/logo/')
     name = models.CharField(max_length=255, help_text="Name of the AI model, e.g., GPT-4 or Claude 3.")
     version = models.CharField(max_length=50, help_text="Version or build identifier of the model.")
     provider = models.CharField(max_length=50, choices=PROVIDER_CHOICES, help_text="Model provider or vendor.")
