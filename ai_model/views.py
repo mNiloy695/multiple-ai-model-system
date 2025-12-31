@@ -57,27 +57,36 @@ class ChatSessionView(viewsets.ModelViewSet):
         
         return self.queryset.all().order_by('-created_at')
     
-
+    def validate_session_type(self,attrs):
+        session_type=attrs.get('session_type',None)
+        if not session_type:
+            raise ValueError({"error":"Session type required"})
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        text = serializer.validated_data.get('text', True)
-        is_text = text if isinstance(text, bool) else bool(text)
-        model = AIModelInfo.objects.filter(
-            images_generating_models=not is_text,
-            is_active=True
-        ).order_by('-created_at').first()
+        # text = serializer.validated_data.get('text', True)
+        # is_text = text if isinstance(text, bool) else bool(text)
+        session_type=serializer.validated_data.get('session_type',None)
+        print(session_type)
+        # model = AIModelInfo.objects.filter(
+        #     session_type=session_type,
+        #     is_active=True
+        # ).order_by('-created_at').first()
+
+        model=serializer.validated_data.get('model',None)
         
+        # if not model:
+        #     model = AIModelInfo.objects.filter(is_active=True).order_by('-created_at').first()
+
         if not model:
-            model = AIModelInfo.objects.filter(is_active=True).order_by('-created_at').first()
-        if not model:
-            return Response({"error": "No active AI models available."}, status=400)
+            return Response({"error": f"No {session_type} active AI models available."}, status=400)
         # Check for previous empty session
         previous_session = ChatSession.objects.filter(user=request.user).order_by('-created_at').first()
         if previous_session and not previous_session.messages.exists():
             # Reuse previous session
-            previous_session.model = model  # optional update
+            previous_session.model = model 
+            previous_session.session_type=session_type
             previous_session.save()
             data = self.get_serializer(previous_session).data
             return Response(data, status=200)

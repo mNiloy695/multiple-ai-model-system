@@ -60,13 +60,26 @@ from django.contrib.auth import get_user_model
 
 User= get_user_model()
 
+
+Session_Type=(
+        ('chat','chat'),
+        ('image_editor','image_editor'),
+       ('text_to_image','text_to_image'),
+        ('image_to_video','image_to_video'),
+        ('text_to_video','text_to_video'),
+        ('image_tool','image_tool'),
+        # ('image_upscaler','image_upscaler'),
+        ('video_upscaler','video_upscaler'),
+    )
 class ChatSession(models.Model):
     model = models.ForeignKey(AIModelInfo, on_delete=models.SET_NULL,blank=True,null=True,related_name='chat_sessions')
     user = models.ForeignKey(User, on_delete=models.CASCADE,blank=True, related_name='chat_sessions')
     summary=models.TextField(null=True,blank=True)
+    session_type=models.CharField(choices=Session_Type,max_length=20,null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-
+    class Meta:
+        ordering=['-updated_at']
  
 
 class ChatMessage(models.Model):

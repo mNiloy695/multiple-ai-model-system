@@ -32,5 +32,20 @@ class ChatSessionSerializer(serializers.ModelSerializer):
     text = serializers.BooleanField(write_only=True,required=False,help_text="Indicates if the session is for text or image generation.")
     class Meta:
         model=ChatSession
-        fields=['id','model','user','messages','summary','text','created_at','updated_at']
+        fields=['id','model','user','messages','summary','text','created_at','updated_at','session_type']
         read_only_fields=['created_at','updated_at','user','messages']
+    
+    def validate(self, attrs):
+        
+        if not self.instance:
+            session_type=attrs.get('session_type',None)
+            if not session_type:
+                raise serializers.ValidationError({"error":"Session type is required"})
+            model=attrs.get('model',None)
+            if not model:
+               raise serializers.ValidationError({"error":"Model field is required"})
+            if model.model_type !=session_type:
+               raise serializers.ValidationError({"error":"Model type and Session type must be same"})
+
+        
+        return attrs
