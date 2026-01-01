@@ -527,12 +527,35 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 #     "fps": 24,
                 #     "resolution": "480p",
                 #     "seed": -1
-                #     }
-               
+                # }
+        
+        elif provider=="deepseek":
+            from .deepseek import call_deepseek_for_chat
+            model_id=getattr(model,'model_id',None)
+            api_key=getattr(model,"api_key",None)
+            base_cost=getattr(model,"base_cost",1)
 
+            ai_response=await database_sync_to_async(call_deepseek_for_chat)(
+                user_id=self.user,
+                model_id=model_id,
+                api_key=api_key,
+                base_cose=base_cost,
+                message=message_content
+            )
+            if ai_response:
+                saved_ai_message = await self.save_message(
+                            self.session_id,
+                            self.user,
+                            "ai",
+                            content = ai_response.get("text") or ai_response.get("content") or ai_response.get("error") or "",
 
+                            images=ai_response.get("images", [])
+                 )
+                if saved_ai_message:
+                            await self.send(text_data=json.dumps({"type": "new_message", "message": saved_ai_message},ensure_ascii=False))
+                
 
-
+        
 
         elif provider=="falai":
             model_id = getattr(model, "model_id", None)
