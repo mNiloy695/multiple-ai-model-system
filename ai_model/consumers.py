@@ -25,6 +25,8 @@ from .fal_ai import call_fal_ai
 from asgiref.sync import sync_to_async
 from django.db import transaction
 from .image_upscaler.image_upscaler import image_upscaler_wavespeed_ai
+from .image_edit.image_edit import image_edit
+
 
 def detect_media_easy(url):
     url = url.lower()
@@ -367,16 +369,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                    await self.send(text_data=json.dumps({"type": "error", "message": f"wave spped model not provide chat"},ensure_ascii=False))
                 
                 #image editor
-                elif model_type=="image_editor":
-                    
-                    payload={
-                        "enable_base64_output": False,
-                        "enable_sync_mode": False,
-                        "images":[image],
-                        "prompt":prompt,
-                        "seed":-1
-
-                    }
+              
                 
                 #text to image generation
                 elif model_type=="text_to_image":
@@ -514,10 +507,9 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
                 elif model_type=="image_editor":
 
-                    from .image_edit import image_edit
-
+                    
                     try:
-                        ai_respons=await database_sync_to_async(image_edit)(
+                        ai_response=await database_sync_to_async(image_edit)(
                             model_id=model_id,
                             api_key=api_key,
                             user_id=self.user.id,
@@ -530,15 +522,18 @@ class ChatConsumer(AsyncWebsocketConsumer):
                         )
                         print("AI RESPONSE FROM WEAVESPEEDAI:",ai_response)
 
-                        if ai_respons:
+                        if ai_response:
                             saved_ai_message=await self.save_message(
                                 self.session_id,
                                 self.user,
                                 "ai",
                                 content="Image edited successfully",
-                                images=[ai_respons]
+                                images=[ai_response]
                             )
+                            if saved_ai_message:
+                                await self.send(text_data=json.dumps({"type": "new_message", "message": saved_ai_message},ensure_ascii=False))
 
+                       
 
                     
                     except Exception as e:

@@ -7,12 +7,30 @@ import time
 from django.contrib.auth import get_user_model
 User=get_user_model()
 
+import base64
+def prepare_image(img):
+    if isinstance(img, str):
+        if img.startswith("http"):  # remote URL
+            import requests
+            r = requests.get(img)
+            img_bytes = r.content
+        else:  # local file path
+            with open(img, "rb") as f:
+                img_bytes = f.read()
+        return "data:image/png;base64," + base64.b64encode(img_bytes).decode("utf-8")
+    elif isinstance(img, list):
+        return [prepare_image(i) for i in img]
+    return img
+
 from accounts.models import CreditAccount
 
 
 ASPECT_RATIO=["1:1","3:2","2:3","3:4","4:3","4:5","5:4","9:16","16:9","21:9"]
 
-def image_edit(model_id,prompt,api_key,user_id,output_format="png",aspect_ratio="1:1",base_cost=500,images=None):
+def image_edit(model_id,prompt,api_key,user_id,output_format="png",aspect_ratio="1:1",base_cost=500,images=[]):
+    
+
+    print("-------------------------------------------------------------------")
     print("Hello from WaveSpeedAI!")
     API_KEY = api_key
 
@@ -42,15 +60,21 @@ def image_edit(model_id,prompt,api_key,user_id,output_format="png",aspect_ratio=
     except CreditAccount.DoesNotExist:
         return {"error":"Invalid user ID"}
     
+    # images= [
+    #             "https://d1q70pf5vjeyhc.cloudfront.net/media/fb8f674bbb1a429d947016fd223cfae1/images/1756458671588525508_ACMHEBxu.jpeg"
+    #     ]
+    # print(images)
 
-
-    
+    # images=[images] if isinstance(images,str) else images
+    print("type of images",type(images))
     payload = {
         "prompt": prompt,
         "enable_base64_output": False,
         "enable_sync_mode": False,
-        "aspect_ratio":aspect_ratio,
-        "images": images if isinstance(images,list) else [],
+        "spect_ratio":aspect_ratio,
+        "images": [
+                images
+        ],
         "output_format": output_format
     }
     
