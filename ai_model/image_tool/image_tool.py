@@ -10,6 +10,7 @@ from django.db import transaction
 from ..track_used_word_subscription import trackUsedWords
 
 
+
 # models_data={
 #     "wavespeed-ai/image-text-remover":{
         
@@ -39,6 +40,9 @@ def image_tool_via_wavespeedai(image_url, prompt,api_key,model_id,base_cost,user
             raise ValueError("Insufficient credits to perform this operation.")
     except CreditAccount.DoesNotExist:
         return {"error":"Invalid user ID"}
+    
+
+
 
   
     

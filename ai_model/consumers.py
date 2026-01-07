@@ -349,6 +349,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
             image=data.get("images",None)
             resolution=data.get("resolution","1080p")
             generate_audio=data.get("generate_audio",False)
+            aspect_ratio=data.get("aspect_ratio","1:1")
         
             print(image)
 
@@ -510,6 +511,41 @@ class ChatConsumer(AsyncWebsocketConsumer):
                         await self.send(text_data=json.dumps({"type": "error", "message": f"AI error: {str(e)}"},ensure_ascii=False))
                         return
                 
+
+                elif model_type=="image_editor":
+
+                    from .image_edit import image_edit
+
+                    try:
+                        ai_respons=await database_sync_to_async(image_edit)(
+                            model_id=model_id,
+                            api_key=api_key,
+                            user_id=self.user.id,
+                            images=image[0] if image else None,
+                            base_cost=base_cost,
+                            output_format=output_format,
+                            prompt=prompt,
+                            aspect_ratio=aspect_ratio
+
+                        )
+                        print("AI RESPONSE FROM WEAVESPEEDAI:",ai_response)
+
+                        if ai_respons:
+                            saved_ai_message=await self.save_message(
+                                self.session_id,
+                                self.user,
+                                "ai",
+                                content="Image edited successfully",
+                                images=[ai_respons]
+                            )
+
+
+                    
+                    except Exception as e:
+                        await self.send(text_data=json.dumps({"type": "error", "message": f"AI error: {str(e)}"},ensure_ascii=False))
+                        return
+
+
                     
 
 
