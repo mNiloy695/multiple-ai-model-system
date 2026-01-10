@@ -5,7 +5,7 @@ services:
     image: redis:7.0-alpine
     ports:
       - "6382:6382"
-    command: ["redis-server", "--port", "6382"]
+    command: [ "redis-server", "--port", "6382" ]
 
   web:
     build: .

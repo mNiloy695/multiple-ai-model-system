@@ -26,7 +26,7 @@ from asgiref.sync import sync_to_async
 from django.db import transaction
 from .image_upscaler.image_upscaler import image_upscaler_wavespeed_ai
 from .image_edit.image_edit import image_edit
-
+from .image_to_3d.image_to_3d import image_to_3d
 
 def detect_media_easy(url):
     url = url.lower()
@@ -538,6 +538,31 @@ class ChatConsumer(AsyncWebsocketConsumer):
                     
                     except Exception as e:
                         await self.send(text_data=json.dumps({"type": "error", "message": f"AI error: {str(e)}"},ensure_ascii=False))
+                        return
+                elif model_type=="image_to_3d":
+                    try:
+                        ai_response=await database_sync_to_async(image_to_3d)(
+                            model_id=model_id,
+                            user_id=self.user.id,
+                            api_key=api_key,
+                            images=image[0] if image else None,
+                            base_cost=base_cost
+
+                        )
+
+                        if ai_response:
+                            saved_ai_message=await self.save_message(
+                                self.session_id,
+                                self.user,
+                                "ai",
+                                content="3d image succesfully genereated",
+                                images=[ai_response]
+                            )
+                        if saved_ai_message:
+                                await self.send(text_data=json.dumps({"type": "new_message", "message": saved_ai_message},ensure_ascii=False))
+
+                    except Exception as e:
+                        await self.send(text_data=json.dumps({"type":"error","message":f"AI error: {str(e)}"},ensure_ascii=False))
                         return
 
 

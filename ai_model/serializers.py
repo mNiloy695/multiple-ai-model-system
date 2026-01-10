@@ -46,6 +46,16 @@ class ChatSessionSerializer(serializers.ModelSerializer):
                raise serializers.ValidationError({"error":"Model field is required"})
             if model.model_type !=session_type:
                raise serializers.ValidationError({"error":"Model type and Session type must be same"})
+        
+
+        if self.instance:
+            session_type=attrs.get('session_type',None)
+            model=attrs.get('model',None)
+            if model.model_type !=session_type:
+               raise serializers.ValidationError({"error":"Model type and Session type must be same"})
+
+        
+
 
         
         return attrs

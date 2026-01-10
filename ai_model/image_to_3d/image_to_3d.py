@@ -1,4 +1,3 @@
-
 import os
 import requests
 import json
@@ -6,47 +5,16 @@ import time
 
 from django.contrib.auth import get_user_model
 User=get_user_model()
-
-import base64
-def prepare_image(img):
-    if isinstance(img, str):
-        if img.startswith("http"):  # remote URL
-            import requests
-            r = requests.get(img)
-            img_bytes = r.content
-        else:  # local file path
-            with open(img, "rb") as f:
-                img_bytes = f.read()
-        return "data:image/png;base64," + base64.b64encode(img_bytes).decode("utf-8")
-    elif isinstance(img, list):
-        return [prepare_image(i) for i in img]
-    return img
-
 from accounts.models import CreditAccount
 
+def image_to_3d(model_id,api_key,user_id,images,base_cost):
 
-ASPECT_RATIO=["1:1","3:2","2:3","3:4","4:3","4:5","5:4","9:16","16:9","21:9"]
 
-def image_edit(model_id,prompt,api_key,user_id,output_format="png",aspect_ratio="1:1",base_cost=500,images=[]):
-    
-
-    print("-------------------------------------------------------------------")
     print("Hello from WaveSpeedAI!")
-    API_KEY = api_key
 
-    if aspect_ratio not in ASPECT_RATIO:
-        return {"error":f"Invalid target aspect_ratio {aspect_ratio}. Available options: {ASPECT_RATIO}"}
+    if model_id !="tripo3d/v2.5/image-to-3d":
+        return {"error":"This model is not allow"}
     
-    if output_format not in ['png','jpeg']:
-        return {"error":f"Invalid target output_format.Available options: 'png or jpeg"}
-    
-    if model_id!="google/nano-banana/edit":
-        return {"error":f"Invalid model Id .Available model is google/nano-banana/edit"}
-    
-    if not user_id:
-        return {"error":"User id not found It's required"}
-    
-
     try:
         user=User.objects.select_related("creditaccount").get(id=user_id)
 
@@ -60,37 +28,16 @@ def image_edit(model_id,prompt,api_key,user_id,output_format="png",aspect_ratio=
     except CreditAccount.DoesNotExist:
         return {"error":"Invalid user ID"}
     
-    # images= [
-    #             "https://d1q70pf5vjeyhc.cloudfront.net/media/fb8f674bbb1a429d947016fd223cfae1/images/1756458671588525508_ACMHEBxu.jpeg"
-    #     ]
-    # print(images)
-
-    # images=[images] if isinstance(images,str) else images
-    print("type of images",type(images))
-    payload = {
-        "prompt": prompt,
-        "enable_base64_output": False,
-        "enable_sync_mode": False,
-        "spect_ratio":aspect_ratio,
-        "images": [
-                images
-        ],
-        "output_format": output_format
-    }
     
-
-    
-
-
-    
-
-
-    url = f"https://api.wavespeed.ai/api/v3/{model_id}/"
+    API_KEY = api_key
+    url = "https://api.wavespeed.ai/api/v3/tripo3d/v2.5/image-to-3d"
     headers = {
         "Content-Type": "application/json",
         "Authorization": f"Bearer {API_KEY}",
     }
-  
+    payload = {
+        "image": "https://d1q70pf5vjeyhc.cloudfront.net/media/fb8f674bbb1a429d947016fd223cfae1/images/1754460996352484824_klzOKHDA.png"
+    }
 
     begin = time.time()
     response = requests.post(url, headers=headers, data=json.dumps(payload))
@@ -101,10 +48,13 @@ def image_edit(model_id,prompt,api_key,user_id,output_format="png",aspect_ratio=
     else:
         print(f"Error: {response.status_code}, {response.text}")
         raise Exception(f"Submit failed {response.status_code}: {response.text}")
-      
+    
+    
 
     url = f"https://api.wavespeed.ai/api/v3/predictions/{request_id}/result"
     headers = {"Authorization": f"Bearer {API_KEY}"}
+
+    
 
     # Poll for results
     while True:
@@ -116,17 +66,13 @@ def image_edit(model_id,prompt,api_key,user_id,output_format="png",aspect_ratio=
             if status == "completed":
                 end = time.time()
                 print(f"Task completed in {end - begin} seconds.")
-                
-                data = result["outputs"][0]
+                url = result["outputs"][0]
                 print(f"Task completed. URL: {url}")
-
                 user_account.credits-=int(base_cost)
                 user.total_token_used+=int(base_cost)
                 user_account.save()
                 user.save()
-
-                return data
-            
+                return url
             elif status == "failed":
                 print(f"Task failed: {result.get('error')}")
                 break
@@ -136,5 +82,4 @@ def image_edit(model_id,prompt,api_key,user_id,output_format="png",aspect_ratio=
             print(f"Error: {response.status_code}, {response.text}")
             break
 
-        time.sleep(0.1)
 
