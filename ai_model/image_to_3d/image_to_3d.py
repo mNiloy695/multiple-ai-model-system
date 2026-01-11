@@ -30,13 +30,13 @@ def image_to_3d(model_id,api_key,user_id,images,base_cost):
     
     
     API_KEY = api_key
-    url = "https://api.wavespeed.ai/api/v3/tripo3d/v2.5/image-to-3d"
+    url = f"https://api.wavespeed.ai/api/v3/{model_id}"
     headers = {
         "Content-Type": "application/json",
         "Authorization": f"Bearer {API_KEY}",
     }
     payload = {
-        "image": "https://d1q70pf5vjeyhc.cloudfront.net/media/fb8f674bbb1a429d947016fd223cfae1/images/1754460996352484824_klzOKHDA.png"
+        "image": images
     }
 
     begin = time.time()

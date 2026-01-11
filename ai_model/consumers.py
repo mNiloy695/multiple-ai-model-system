@@ -564,15 +564,39 @@ class ChatConsumer(AsyncWebsocketConsumer):
                     except Exception as e:
                         await self.send(text_data=json.dumps({"type":"error","message":f"AI error: {str(e)}"},ensure_ascii=False))
                         return
+                
+                elif model_type=="video_effect":
+                    from .video_effect.video_effect import video_effect
+                    resolution=data.get("resolution",480)
+                    effect=data.get("effect",None)
+                    duration=data.get("duration",5)
+                    try:
+                        ai_response=await database_sync_to_async(video_effect)(
+                        model_id=model_id,
+                        user_id=self.user.id,
+                        api_key=api_key,
+                        images=image[0] if image else None,
+                        base_cost=base_cost,
+                        duration=duration,
+                        effect=effect,
+                        resolution=resolution
+                        )
+                        if ai_response:
+                           saved_ai_message=await self.save_message(
+                                self.session_id,
+                                self.user,
+                                "ai",
+                                content="Video generate successfully",
+                                images=[ai_response]
+                        )
+                           if saved_ai_message:
+                                await self.send(text_data=json.dumps({"type": "new_message", "message": saved_ai_message},ensure_ascii=False))
 
 
-                    
+                    except Exception as e:
+                        await self.send(text_data=json.dumps({"type":"error","message":f"AI error: {str(e)}"},ensure_ascii=False))
+                        return
 
-
-    
-
-
-        
                 
                 # elif model_type=="image_to_video":
                     

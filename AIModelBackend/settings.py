@@ -72,6 +72,7 @@ INSTALLED_APPS = [
     'invoices',
     'ads_rewards',
     'django_filters',
+    'drf_spectacular',
 
 ]
 
@@ -136,6 +137,7 @@ REST_FRAMEWORK = {
         'rest_framework.renderers.JSONRenderer',
     ),
     'UNICODE_JSON': True,
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
     
     # 'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     # 'PAGE_SIZE': 10,
@@ -146,7 +148,11 @@ REST_FRAMEWORK = {
     # ],
 }
 
-
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'My Backend API',
+    'DESCRIPTION': 'API documentation for my project',
+    'VERSION': '1.0.0',
+}
 
 # JWT Settings
 from datetime import timedelta
