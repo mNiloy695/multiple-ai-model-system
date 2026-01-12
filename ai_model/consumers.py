@@ -570,6 +570,11 @@ class ChatConsumer(AsyncWebsocketConsumer):
                     resolution=data.get("resolution",480)
                     effect=data.get("effect",None)
                     duration=data.get("duration",5)
+                    bgm=data.get("bgm",False)
+                    template=data.get("template","sexy_devil")
+
+                
+                        
                     try:
                         ai_response=await database_sync_to_async(video_effect)(
                         model_id=model_id,
@@ -579,14 +584,17 @@ class ChatConsumer(AsyncWebsocketConsumer):
                         base_cost=base_cost,
                         duration=duration,
                         effect=effect,
-                        resolution=resolution
+                        resolution=resolution,
+                        bgm=bgm,
+                        seed=seed,
+                        template=template
                         )
                         if ai_response:
                            saved_ai_message=await self.save_message(
                                 self.session_id,
                                 self.user,
                                 "ai",
-                                content="Video generate successfully",
+                                content="Video Generated successfully",
                                 images=[ai_response]
                         )
                            if saved_ai_message:

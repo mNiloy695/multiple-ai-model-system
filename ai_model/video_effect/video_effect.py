@@ -8,18 +8,34 @@ from django.contrib.auth import get_user_model
 User=get_user_model()
 from accounts.models import CreditAccount
 
-def video_effect(model_id,api_key,user_id,images,base_cost,duration=None,effect=None,resolution=None):
+def video_effect(model_id,api_key,user_id,images,base_cost,duration=None,effect=None,resolution=None,bgm=False,template=None,seed=0):
     print("Hello from WaveSpeedAI!")
     API_KEY = api_key
-    payload=payload_data(model_id=model_id,duration=duration,effect=effect,image=images,resolution=resolution)
+    payload=payload_data(model_id=model_id,duration=duration,effect=effect,image=images,resolution=resolution,bgm=bgm,template=template,seed=seed)
     print("payload ",payload)
     if payload is None:
-        return {"error":"Invalid model ID"}
+        raise Exception('Model id is wrong this model not allowed')
+    
+
     try:
         user=User.objects.get(id=user_id)
     except User.DoesNotExist:
         return {"error":"User Id not Found"}
     
+
+    if model_id=="id":
+        x_list=["pumpkin_head","tim_burton","broomstick_fly","sexy_devil","dance_with_ghost","crow_arrival","clown_makeup"]
+        x_list_5x=["not_look_back_video","hadow_of_terror_video"]
+
+        if template in x_list:
+            base_cost=int(base_cost)*2
+
+        elif template=="witchy_pet":
+            base_cost=int(base_cost)*3
+        
+        elif template in x_list_5x:
+            base_cost=int(base_cost)*2.5
+
     try:
         user_account=user.creditaccount
         if user_account.credits<base_cost:
