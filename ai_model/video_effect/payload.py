@@ -1,6 +1,12 @@
-def payload_data(model_id,duration=None,effect=None,image=None,resolution=None,bgm=False,template="sexy_devil",seed=0):
+def payload_data(model_id,duration=None,effect=None,image=None,resolution=None,bgm=False,template="sexy_devil",seed=0,sound_effect_switch=False):
 
     print("model is is ",model_id)
+
+
+    if model_id=="pixverse/pixverse-v5-effects":
+        resolution_allowed=["540p","360p","720p","1080p"]
+        if resolution not in resolution_allowed:
+            resolution="540p"
 
 
     if model_id=="vidu/template/halloween":
@@ -22,7 +28,8 @@ def payload_data(model_id,duration=None,effect=None,image=None,resolution=None,b
         "duration": duration,
         "effect":effect,
         "image": image,
-        "resolution": resolution
+        "resolution": resolution,
+        "sound_effect_switch":sound_effect_switch
     },
     "kwaivgi/kling-effects":{
         "effect_scene": effect,

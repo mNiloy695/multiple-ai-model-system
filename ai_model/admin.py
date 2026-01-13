@@ -6,6 +6,8 @@ from .models import AIModelInfo,ChatSession,ChatMessage
 @admin.register(AIModelInfo)
 class AdminAImodelInfor(admin.ModelAdmin):
     list_display=['id','provider','model_id','is_active']
+    search_fields = ('model_id', 'provider')
+    list_filter = ('provider', 'model_id')
 
 @admin.register(ChatSession)
 class AdminChatSession(admin.ModelAdmin):
@@ -13,3 +15,5 @@ class AdminChatSession(admin.ModelAdmin):
 
 
 admin.site.register(ChatMessage)
+
+

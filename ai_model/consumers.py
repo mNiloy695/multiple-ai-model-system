@@ -572,6 +572,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                     duration=data.get("duration",5)
                     bgm=data.get("bgm",False)
                     template=data.get("template","sexy_devil")
+                    sound_effect_switch=data.get("sound_effect_switch",False)
 
                 
                         
@@ -587,7 +588,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
                         resolution=resolution,
                         bgm=bgm,
                         seed=seed,
-                        template=template
+                        template=template,
+                        sound_effect_switch=sound_effect_switch,
                         )
                         if ai_response:
                            saved_ai_message=await self.save_message(

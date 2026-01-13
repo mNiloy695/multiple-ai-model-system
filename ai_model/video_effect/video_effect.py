@@ -9,15 +9,13 @@ import math
 User=get_user_model()
 from accounts.models import CreditAccount
 
-def video_effect(model_id,api_key,user_id,images,base_cost,duration=None,effect=None,resolution=None,bgm=False,template=None,seed=0):
+def video_effect(model_id,api_key,user_id,images,base_cost,duration=None,effect=None,resolution=None,bgm=False,template=None,seed=0,sound_effect_switch=False):
     print("Hello from WaveSpeedAI!")
     API_KEY = api_key
-    payload=payload_data(model_id=model_id,duration=duration,effect=effect,image=images,resolution=resolution,bgm=bgm,template=template,seed=seed)
+    payload=payload_data(model_id=model_id,duration=duration,effect=effect,image=images,resolution=resolution,bgm=bgm,template=template,seed=seed,sound_effect_switch=sound_effect_switch)
     print("payload ",payload)
     if payload is None:
         raise Exception('Model id is wrong this model not allowed')
-    
-
     try:
         user=User.objects.get(id=user_id)
     except User.DoesNotExist:
@@ -36,7 +34,7 @@ def video_effect(model_id,api_key,user_id,images,base_cost,duration=None,effect=
         
         elif template in x_list_5x:
             base_cost=math.ceil(float(base_cost)*2.5)
-            
+
     if model_id == "video-effects/dust-me-away" or model_id=="video-effects/red-or-white":
             resolution_allowed = ["540p", "360p", "720p"]
 
@@ -45,10 +43,31 @@ def video_effect(model_id,api_key,user_id,images,base_cost,duration=None,effect=
     else:
         if resolution == "720p":
             base_cost = math.ceil(float(base_cost) * 1.4)
-  
 
+
+    if model_id=="pixverse/pixverse-v5-effects":
+        resolution_allowed=["540p", "360p", "720p","1080p"]
+
+        if resolution not in resolution_allowed:
+            resolution="540p"
+
+        # if (resolution=="540p" and duration==8) or (resolution=="360p" and duration==8):
+        #     base_cost=math.ceil(float(base_cost)*2)
         
-        
+        # elif resolution=="720p" and duration==5:
+        #         base_cost=math.ceil(float(base_cost)*1.33)
+
+        # elif (resolution=="720p" and duration==8 ) or (resolution=="1080p" and duration==5):
+        #         base_cost=math.ceil(float(base_cost)*2.67)
+            
+        # elif (resolution=="1080p" and duration==8):
+        #         base_cost=math.ceil(float(base_cost)*5.33)
+        multipliers = {("360p", 8): 2,("540p", 8): 2,("720p", 5): 1.33, ("720p", 8): 2.67,("1080p", 5): 2.67,("1080p", 8): 5.33,}
+        key = (resolution, duration)
+        if key in multipliers:
+            base_cost = math.ceil(float(base_cost) * multipliers[key])
+        print(base_cost,"--------------------------")
+
 
     try:
         user_account=user.creditaccount
