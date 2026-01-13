@@ -5,6 +5,7 @@ import json
 import time
 from .payload import payload_data
 from django.contrib.auth import get_user_model
+import math
 User=get_user_model()
 from accounts.models import CreditAccount
 
@@ -23,7 +24,7 @@ def video_effect(model_id,api_key,user_id,images,base_cost,duration=None,effect=
         return {"error":"User Id not Found"}
     
 
-    if model_id=="id":
+    if model_id=="vidu/template/halloween":
         x_list=["pumpkin_head","tim_burton","broomstick_fly","sexy_devil","dance_with_ghost","crow_arrival","clown_makeup"]
         x_list_5x=["not_look_back_video","hadow_of_terror_video"]
 
@@ -34,7 +35,20 @@ def video_effect(model_id,api_key,user_id,images,base_cost,duration=None,effect=
             base_cost=int(base_cost)*3
         
         elif template in x_list_5x:
-            base_cost=int(base_cost)*2.5
+            base_cost=math.ceil(float(base_cost)*2.5)
+            
+    if model_id == "video-effects/dust-me-away" or model_id=="video-effects/red-or-white":
+            resolution_allowed = ["540p", "360p", "720p"]
+
+            if resolution not in resolution_allowed:
+             resolution = "540p"
+    else:
+        if resolution == "720p":
+            base_cost = math.ceil(float(base_cost) * 1.4)
+  
+
+        
+        
 
     try:
         user_account=user.creditaccount

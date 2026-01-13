@@ -7,6 +7,16 @@ def payload_data(model_id,duration=None,effect=None,image=None,resolution=None,b
         template_list = ["tim_burton","broomstick_fly","witchy_pet","pumpkin_head","sexy_devil","dance_with_ghost","crow_arrival","clown_makeup","shadow_of_terror_video","not_look_back_video","turn_into_zombie","head_to_balloon","covered_liquid_metal","wednesdays_vibe"]
         if template not in template_list:
              template="sexy_devil"
+
+
+    if model_id=="video-effects/dust-me-away" or model_id=="video-effects/red-or-white":
+        resolution_allowed=["540p","360p","720p"]
+
+        if resolution not in ["540p","360p","720p"]:
+            resolution="540p"
+
+
+    
     payload={
     "pixverse/pixverse-v5-effects":{
         "duration": duration,
@@ -114,7 +124,107 @@ def payload_data(model_id,duration=None,effect=None,image=None,resolution=None,b
        "template":template,
        "seed":seed,
        "bgm":bgm
+    },
+    "video-effects/break-glass":{
+        "image":image
+    },
+    "video-effects/cap-walk":{
+        "image":image
+    },
+    "video-effects/carry-me":{
+        "image":image
+    },
+    "video-effects/child-memory":{
+        "image":image
+    },
+    "video-effects/claysho":{
+        "image":image
+    },
+    "video-effects/couple-hugging":{
+        "image":image
+    },
+    "video-effects/exotic-princess":{
+        "image":image
+    },
+    "video-effects/flower-receive":{
+        "image":image
+    },
+    "video-effects/hulk":{
+        "image":image
+    },
+    "video-effects/hulk-dive":{
+        "image":image
+    },
+    "video-effects/paperman":{
+        "image":image
+    },
+    "video-effects/nap-me-360p":{
+        "image":image
+    },
+    "video-effects/minecraft":{
+        "image":image
+    },
+    "video-effects/ladudu-me-random":{
+        "image":image
+    },
+    "video-effects/past-life-job":{
+        "image":image
+    },
+    "video-effects/pet-lovers":{
+        "image":image
+    },
+    "video-effects/pinch":{
+        "image":image
+    },
+    "video-effects/pixel-me":{
+        "image":image
+    },
+    "video-effects/slice-therapy":{
+        "image":image
+    },
+    "video-effects/soul-depart":{
+        "image":image
+    },
+    "video-effects/split-stance-human":{
+        "image":image
+    },
+    "video-effects/star-carpet":{
+        "image":image
+    },
+    "video-effects/tap-me":{
+        "image":image
+    },
+    "video-effects/zoom-in-fast":{
+        "image":image
+    },
+    "video-effects/dreamy-wedding":{
+        "image":image
+    },
+    "video-effects/dust-me-away":{
+        "image":image,
+        "resolution":resolution
+    },
+    "video-effects/hair-swap":{
+        "image":image
+    },
+    "video-effects/manga-meme":{
+        "image":image
+    },
+    "video-effects/oscar-gala":{
+        "image":image
+    },
+    "video-effects/red-or-white":{
+        "image":image,
+        "resolution":resolution
+    },
+    "video-effects/squid-game":{
+        "image":image,
+        "bgm":bgm
+    },
+    "video-effects/walk-forward":{
+        "image":image
     }
+
     }
     # print("payload",payload[model_id])
     data = payload.get(model_id)
