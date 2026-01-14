@@ -223,7 +223,7 @@ User = get_user_model()
 # =========================
 # COST CALCULATION
 # =========================
-def calculate_cost(model_type, *, base_cost, words=0, num_images=1):
+def calculate_cost(model_type, *, base_cost, words=0, num_images=1,secounds=4):
     base_cost = Decimal(str(base_cost))
 
     if model_type in {"chat", "completion"}:
@@ -231,6 +231,9 @@ def calculate_cost(model_type, *, base_cost, words=0, num_images=1):
 
     if model_type == "image_generation":
         return Decimal(num_images) * base_cost
+    
+    if model_type=="video_generation":
+        return Decimal(secounds)*base_cost
 
     if model_type in {
         "image_understanding",
@@ -242,7 +245,7 @@ def calculate_cost(model_type, *, base_cost, words=0, num_images=1):
 
     return Decimal("0")
 
-
+import time
 # =========================
 # MAIN ENTRY
 # =========================
@@ -256,20 +259,24 @@ def gpt_response(
     audio_data=None,
     num_images=1,
     summary=None,
+    height=1024,
+    width=1024,
+    duration=4,
 ):
 
-
+   
     client = OpenAI(api_key=api_key)
 
     user = User.objects.filter(id=user_id).first()
     if not user:
         return _error("User not found")
 
-    model_type = _detect_model_type(
-        model_id.lower(),
-        images_data_list,
-        audio_data,
+    model_type = _detect_model(
+        model_id.lower()
     )
+
+
+    print("---------------model type--------------",model_type)
 
     prompt_words = len(message.split())
 
@@ -332,11 +339,14 @@ def gpt_response(
             images = []
 
         elif model_type == "image_generation":
+            if f"{width}x{height}" not in ["1024x1024","1536x1024"]:
+                width=1024
+                height=1024
             res = client.images.generate(
                 model=model_id,
                 prompt=message,
                 n=num_images,
-                size="1024x1024",
+                size=f"{width}x{height}",
             )
 
             text = f"{num_images} image(s) generated"
@@ -388,13 +398,37 @@ def gpt_response(
 
             text = str(res.results[0])
             images = []
+        elif model_type=="video_generation":
+            print("viddooooooooooooooooooooooooooooooooo")
+            if f"{width}x{height}" not in ["720x1280","1280x720"]:
+                width=720
+                height=1280
 
-        else:
-            raise ValueError("Unsupported model type")
+            job = client.videos.create(
+                model="sora-2",
+                prompt="A cinematic shot of a tiger walking through a jungle at sunrise",
+                seconds=duration,
+                size="720x1280"
+            
+                )
+            print(job)
+            # while True:
+            #     result = client.videos.retrieve(job.id)
+            #     if result.status == "completed":
+            #         print(result.output[0].url)
+            #         break
+            #     elif result.status=="in_progress":
+            #         print("the video is processing")
+            #         time.sleep(5)
+            #     elif result.status == "failed":
+            #         raise Exception("Video generation failed")
+
+            #     else:
+            #           print("Unknown video status:", result.status)
 
         return {
-            "text": text,
-            "images": images,
+            "text": text or "",
+            "images": images or [],
             "sender": "ai",
             "error": None,
         }
@@ -424,27 +458,78 @@ def _error(msg: str) -> dict:
         "error": msg,
     }
 
+#     return "unknown"
 
-def _detect_model_type(model_lower: str, images_data_list, audio_data) -> str:
-    if any(k in model_lower for k in ["dall-e", "gpt-image", "image-gen"]):
+
+def _detect_model(model_id: str) -> str:
+    """
+    Safe, model-id–only detection.
+    Works for all current & future models.
+    """
+
+    if not model_id:
+        return "Unknown"
+
+    model = model_id.lower()
+
+    # -------------------------
+    # STRICT / HIGH-CONFIDENCE
+    # -------------------------
+
+    if "sora" in model or "video" in model:
+        return "video_generation"
+
+    if "image" in model or "dall-e" in model or "img" in model:
         return "image_generation"
 
-    if images_data_list and any(k in model_lower for k in ["vision", "gpt-4o", "gpt-4-vision"]):
+    if "vision" in model:
         return "image_understanding"
 
-    if audio_data and any(k in model_lower for k in ["audio", "tts", "gpt-audio"]):
+    if "audio" in model or "tts" in model or "stt" in model:
         return "audio_generation"
 
-    if any(k in model_lower for k in ["embedding", "text-embedding"]):
+    if "embed" in model:
         return "embedding"
 
-    if any(k in model_lower for k in ["moderation", "omni-moderation"]):
+    if "moderation" in model or "safety" in model:
         return "moderation"
 
-    if any(k in model_lower for k in ["davinci", "curie", "babbage", "ada"]):
+    # -------------------------
+    # LEGACY COMPLETIONS
+    # -------------------------
+
+    if any(k in model for k in ("davinci", "curie", "babbage", "ada")):
         return "completion"
 
-    if "gpt" in model_lower or "o1" in model_lower or "o3" in model_lower:
+    # -------------------------
+    # DEFAULT (SAFE)
+    # -------------------------
+    # All modern & future models support chat semantics
+    if "gpt" in model or "o1" in model or "o3" in model:
         return "chat"
 
     return "unknown"
+
+
+
+# def _detect_model_type(model_lower: str, images_data_list, audio_data) -> str:
+#     if any(k in model_lower for k in ["dall-e", "gpt-image", "image-gen"]):
+#         return "image_generation"
+
+#     if images_data_list and any(k in model_lower for k in ["vision", "gpt-4o", "gpt-4-vision"]):
+#         return "image_understanding"
+
+#     if audio_data and any(k in model_lower for k in ["audio", "tts", "gpt-audio"]):
+#         return "audio_generation"
+
+#     if any(k in model_lower for k in ["embedding", "text-embedding"]):
+#         return "embedding"
+
+#     if any(k in model_lower for k in ["moderation", "omni-moderation"]):
+#         return "moderation"
+
+#     if any(k in model_lower for k in ["davinci", "curie", "babbage", "ada"]):
+#         return "completion"
+
+#     if "gpt" in model_lower or "o1" in model_lower or "o3" in model_lower:
+#         return "chat"

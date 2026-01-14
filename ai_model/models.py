@@ -5,7 +5,7 @@ class AIModelInfo(models.Model):
 
     PROVIDER_CHOICES = [
         ('openai', 'OpenAI'),
-        ('leonardo', 'Leonardo AI'),
+        # ('leonardo', 'Leonardo AI'),
         ('wavespeedai','Wavespeed AI'),
         # ('huggingface', 'Hugging Face'),
         # ('anthropic', 'Anthropic'),

@@ -265,21 +265,16 @@ class ChatConsumer(AsyncWebsocketConsumer):
             num_images=data.get("num_images",1)
             height=data.get("height",512)
             width=data.get("width",512)
+            duration=data.get("duration",4)
             # fresh_user=await database_sync_to_async(User.objects.get)(id=self.user.id)
-            # self.user=fresh_user         
+            # self.user=fresh_user
+            # 1024x1024 (square) - 1536x1024 (landscape) - 1024x1536
+            
+
             if model_id and api_key:
                 try:
                     base_cost=getattr(model,"base_cost",500)
-                    ai_response = await database_sync_to_async(gpt_response)(
-    message=message_content,
-    model_id=model_id,
-    api_key=api_key,
-    user_id=self.user.id,
-    images_data_list=user_images,
-    summary=session_data.get("summary"),
-    num_images=num_images,
-    base_cost=base_cost,
-)
+                    ai_response = await database_sync_to_async(gpt_response)(message=message_content,model_id=model_id,api_key=api_key,user_id=self.user.id,images_data_list=user_images,summary=session_data.get("summary"),num_images=num_images,base_cost=base_cost,duration=duration,)
 
 
                     
@@ -310,6 +305,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                         if saved_ai_message:
                             await self.send(text_data=json.dumps({"type": "new_message", "message": saved_ai_message},ensure_ascii=False))
                 except Exception as e:
+                    print("error is occure ")
                     await self.send(text_data=json.dumps({"type": "error", "message": f"AI error: {str(e)}"},ensure_ascii=False))
         
 
