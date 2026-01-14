@@ -285,6 +285,7 @@ def gpt_response(
         base_cost=base_cost,
         words=prompt_words,
         num_images=num_images,
+        secounds=int(duration)
     )
 
     # =========================
