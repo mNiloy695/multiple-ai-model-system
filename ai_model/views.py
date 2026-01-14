@@ -4,27 +4,55 @@ from django.shortcuts import render
 
 from .serializers import AIModelSerializer,AIModelLimitedSerializer
 from rest_framework import viewsets
-from .models import AIModelInfo,ChatSession
-from rest_framework import permissions
+from .models import AIModelInfo, ChatSession
+from rest_framework import permissions, viewsets
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
+from django.db.models import Q
+
 class AImodelView(viewsets.ModelViewSet):
-    queryset=AIModelInfo.objects.all()
-    serializer=AIModelSerializer
-    filter_backends=[DjangoFilterBackend]
-    filterset_fields=['model_id','model_type','provider']
-    # permission_classes=[permissions.IsAdminUser]
+    queryset = AIModelInfo.objects.all()
+    serializer_class = AIModelSerializer
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ['model_id', 'model_type', 'provider']
+    # permission_classes = [permissions.IsAuthenticated]
 
     def get_permissions(self):
         if self.request.method in permissions.SAFE_METHODS:
-            return [permissions.AllowAny()]
+            return [permissions.IsAuthenticated]
         return [permissions.IsAdminUser()]
-    
+
     def get_queryset(self):
+        queryset = self.queryset
+
         
-        if self.request.user and self.request.user.is_staff:
-            return self.queryset.all()
-        return self.queryset.filter(is_active=True).only('id','name','model_id','created_at','description','base_url','provider','model_type')
+        if not (self.request.user and self.request.user.is_staff):
+            queryset = queryset.filter(is_active=True).only(
+                'id',
+                'name',
+                'model_id',
+                'created_at',
+                'description',
+                'base_url',
+                'provider',
+                'model_type',
+            )
+
+        model_type = self.request.query_params.get('model_type')
+
+        if model_type == 'text_to_video':
+            queryset = queryset.filter(
+                Q(model_type='text_to_video')
+                | Q(model_type='text_or_image_to_video')
+            )
+
+        elif model_type == 'image_to_video':
+            queryset = queryset.filter(
+                Q(model_type='image_to_video')
+                | Q(model_type='text_or_image_to_video')
+            )
+
+        return queryset
 
     def get_serializer_class(self):
         if self.request.user and self.request.user.is_staff:

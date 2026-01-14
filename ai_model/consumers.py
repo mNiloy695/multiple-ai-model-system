@@ -271,8 +271,16 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 try:
                     base_cost=getattr(model,"base_cost",500)
                     ai_response = await database_sync_to_async(gpt_response)(
-                        message_content, model_id, api_key, self.user.id,user_images,height,width,summary=session_data.get("summary"),num_images=num_images,base_cost=base_cost
-                    )
+    message=message_content,
+    model_id=model_id,
+    api_key=api_key,
+    user_id=self.user.id,
+    images_data_list=user_images,
+    summary=session_data.get("summary"),
+    num_images=num_images,
+    base_cost=base_cost,
+)
+
 
                     
                     if ai_response:

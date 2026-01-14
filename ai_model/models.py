@@ -22,6 +22,7 @@ class AIModelInfo(models.Model):
        ('text_to_image','text_to_image'),
         ('image_to_video','image_to_video'),
         ('text_to_video','text_to_video'),
+        ('text_or_image_to_video','text_or_image_to_video'),
         ('image_tool','image_tool'),
         # ('image_upscaler','image_upscaler'),
         ('video_upscaler','video_upscaler'),
@@ -48,11 +49,11 @@ class AIModelInfo(models.Model):
     )
     description = models.TextField(blank=True,null=True,help_text="Brief description of the model’s purpose or usage context.")
     is_active = models.BooleanField(default=True, help_text="Indicates if the model is currently available for use.")
-    model_type=models.CharField(choices=MODEL,max_length=20,null=True)
+    model_type=models.CharField(choices=MODEL,max_length=50,null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     # images_generating_models=models.BooleanField(default=False,help_text="Indicates if the model supports image generation")
-    base_cost=models.IntegerField(default=0,help_text="base cost in terms of words or credits for using this model")
+    base_cost=models.DecimalField(default=0,help_text="base cost in terms of words or credits for using this model",decimal_places=2,max_digits=100)
 
 
     def __str__(self):
@@ -71,6 +72,7 @@ Session_Type=(
         ('image_to_video','image_to_video'),
         ('text_to_video','text_to_video'),
         ('image_tool','image_tool'),
+        ('text_or_image_to_video','text_or_image_to_video'),
         # ('image_upscaler','image_upscaler'),
         ('video_upscaler','video_upscaler'),
         ('image_to_3d','image_to_3d'),
@@ -81,7 +83,7 @@ class ChatSession(models.Model):
     model = models.ForeignKey(AIModelInfo, on_delete=models.SET_NULL,blank=True,null=True,related_name='chat_sessions')
     user = models.ForeignKey(User, on_delete=models.CASCADE,blank=True, related_name='chat_sessions')
     summary=models.TextField(null=True,blank=True)
-    session_type=models.CharField(choices=Session_Type,max_length=20,null=True)
+    session_type=models.CharField(choices=Session_Type,max_length=50,null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     class Meta:

@@ -29,7 +29,7 @@ class CustomUser(AbstractUser):
     username = models.CharField(max_length=150,unique=True,null=True,blank=True)
     email = models.EmailField(unique=True)
     # total_token_used=models.IntegerField(default=0,null=True,blank=True)
-    total_token_used=models.BigIntegerField(default=0,null=True,blank=True)
+    total_token_used=models.DecimalField(default=0,null=True,blank=True,decimal_places=2,max_digits=1000000000)
     subscribed=models.BooleanField(default=False,null=True,blank=True)
     api_limit=models.IntegerField(default=5)
     word_limit=models.IntegerField(default=400)
@@ -63,7 +63,7 @@ class OTP(models.Model):
 #this site for Credit Account model
 class CreditAccount(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE,related_name='creditaccount')
-    credits = models.IntegerField(default=0)
+    credits = models.DecimalField(default=0,decimal_places=2,max_digits=100)
 
     def __str__(self):
         return f"{self.user.email} - Credits: {self.credits}"
