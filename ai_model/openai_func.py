@@ -285,7 +285,8 @@ def gpt_response(
         base_cost=base_cost,
         words=prompt_words,
         num_images=num_images,
-        secounds=int(duration)
+        secounds=
+        (duration)
     )
 
     # =========================
@@ -408,10 +409,10 @@ def gpt_response(
             job = client.videos.create(
                 model="sora-2",
                 prompt="A cinematic shot of a tiger walking through a jungle at sunrise",
-                seconds=duration,
-                size="720x1280"
-            
+                seconds=str(duration),
+                size=f"{width}x{height}"
                 )
+            
             print(job)
             # while True:
             #     result = client.videos.retrieve(job.id)

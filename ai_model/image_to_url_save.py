@@ -1,3 +1,52 @@
+# import requests
+# from django.conf import settings
+# from PIL import Image
+# import io, os, uuid
+# import base64
+
+# def download_and_store_webp(image_urls):
+#     """
+#     Downloads a list of image URLs or base64 strings, converts each to WEBP,
+#     saves in MEDIA folder, and returns a list of saved media URLs.
+#     """
+#     saved_urls = []
+#     save_dir = os.path.join(settings.MEDIA_ROOT, "ai_images")
+#     os.makedirs(save_dir, exist_ok=True)
+
+#     for url in image_urls:
+#         try:
+#             if url.startswith("data:image/"):  # Base64 image
+#                 header, encoded = url.split(",", 1)
+#                 img_data = base64.b64decode(encoded)
+#             elif url.startswith("http://") or url.startswith("https://"):  # Normal URL
+#                 response = requests.get(url)
+#                 if response.status_code != 200:
+#                     saved_urls.append(None)
+#                     continue
+#                 img_data = response.content
+#             else:
+#                 # Invalid input
+#                 saved_urls.append(None)
+#                 continue
+
+#             img = Image.open(io.BytesIO(img_data)).convert("RGBA")
+#             file_name = f"{uuid.uuid4()}.jpeg"
+#             file_path = os.path.join(save_dir, file_name)
+
+#             img.save(file_path, "WEBP", quality=95)
+
+#             saved_urls.append(f"{settings.BASE_URL}{settings.MEDIA_URL}ai_images/{file_name}")
+
+#         except Exception as e:
+#             print("Error processing URL/Base64:", url, e)
+#             saved_urls.append(None)
+
+#     print("SAVED URLS:", saved_urls)
+#     return saved_urls
+
+
+
+#new update
 import requests
 from django.conf import settings
 from PIL import Image
@@ -6,7 +55,7 @@ import base64
 
 def download_and_store_webp(image_urls):
     """
-    Downloads a list of image URLs or base64 strings, converts each to WEBP,
+    Downloads a list of image URLs or base64 strings, converts each to PNG or JPEG,
     saves in MEDIA folder, and returns a list of saved media URLs.
     """
     saved_urls = []
@@ -15,25 +64,44 @@ def download_and_store_webp(image_urls):
 
     for url in image_urls:
         try:
-            if url.startswith("data:image/"):  # Base64 image
+            # Handle Base64
+            if url.startswith("data:image/"):
                 header, encoded = url.split(",", 1)
                 img_data = base64.b64decode(encoded)
-            elif url.startswith("http://") or url.startswith("https://"):  # Normal URL
+                img_format = header.split("/")[1].split(";")[0].upper()
+                if img_format not in ["PNG", "JPEG", "JPG"]:
+                    img_format = "PNG"  # fallback
+
+            # Handle normal URL
+            elif url.startswith("http://") or url.startswith("https://"):
                 response = requests.get(url)
                 if response.status_code != 200:
                     saved_urls.append(None)
                     continue
                 img_data = response.content
+                img_format = response.headers.get("Content-Type", "image/png").split("/")[-1].upper()
+                if img_format == "JPG":
+                    img_format = "JPEG"
+                elif img_format not in ["PNG", "JPEG"]:
+                    img_format = "PNG"
+
             else:
-                # Invalid input
                 saved_urls.append(None)
                 continue
 
-            img = Image.open(io.BytesIO(img_data)).convert("RGBA")
-            file_name = f"{uuid.uuid4()}.webp"
-            file_path = os.path.join(save_dir, file_name)
+            # Open image and convert
+            img = Image.open(io.BytesIO(img_data))
+            if img_format == "PNG":
+                img = img.convert("RGBA")
+                ext = "png"
+            else:
+                img = img.convert("RGB")
+                ext = "jpg"
 
-            img.save(file_path, "WEBP", quality=95)
+            # Save image
+            file_name = f"{uuid.uuid4()}.{ext}"
+            file_path = os.path.join(save_dir, file_name)
+            img.save(file_path, img_format, quality=95)
 
             saved_urls.append(f"{settings.BASE_URL}{settings.MEDIA_URL}ai_images/{file_name}")
 
@@ -41,7 +109,6 @@ def download_and_store_webp(image_urls):
             print("Error processing URL/Base64:", url, e)
             saved_urls.append(None)
 
-    print("SAVED URLS:", saved_urls)
     return saved_urls
 
 

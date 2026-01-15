@@ -610,6 +610,40 @@ class ChatConsumer(AsyncWebsocketConsumer):
                     except Exception as e:
                         await self.send(text_data=json.dumps({"type":"error","message":f"AI error: {str(e)}"},ensure_ascii=False))
                         return
+                elif model_type=="text_to_speech":
+                    from .text_to_speech.text_to_speech import text_to_sound
+                    bitrate=data.get("bitrate",None)
+                    emotion=data.get("emotion",None)
+                    english_normalization=data.get("english_normalization",False)
+                    formate=data.get("format","mp3")
+                    language_boost=data.get("language_boost","auto")
+                    pitch=data.get("pitch",1)
+                    sample_rate=data.get("sample_rate",None)
+                    speed=data.get("speed",1)
+                    voice_id=data.get("voice_id","Wise_Woman")
+                    volume=data.get("volume",1)
+                    channel=data.get("channel",None)
+
+                    print("this is the prompt--------------------------------------",prompt)
+
+
+
+                    try:
+                        ai_response=await database_sync_to_async(text_to_sound)(model_id=model_id,api_key=api_key,user_id=self.user.id,base_cost=base_cost,bitrate=bitrate,emotion=emotion,english_normalization=english_normalization,formate=formate,prompt=prompt,language_boost=language_boost,pitch=pitch,sample_rate=sample_rate,speed=speed,voice_id=voice_id,volume=volume,channel=channel)
+                        if ai_response:
+                           saved_ai_message=await self.save_message(
+                                self.session_id,
+                                self.user,
+                                "ai",
+                                content="Video Generated successfully",
+                                images=[ai_response]
+                        )
+                           if saved_ai_message:
+                                await self.send(text_data=json.dumps({"type": "new_message", "message": saved_ai_message},ensure_ascii=False))
+
+
+                    except Exception as e:
+                        await self.send(text_data=json.dumps({"type":"error","message":f"AI error: {str(e)}"},ensure_ascii=False))
 
                 
                 # elif model_type=="image_to_video":

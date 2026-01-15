@@ -27,7 +27,8 @@ class AIModelInfo(models.Model):
         # ('image_upscaler','image_upscaler'),
         ('video_upscaler','video_upscaler'),
         ('image_to_3d','image_to_3d'),
-        ('video_effect','video_effect')
+        ('video_effect','video_effect'),
+        ('text_to_speech','text_to_speech'),
     )
     image=models.ImageField(upload_to='media/profile/',null=True,blank=True)
     logo=models.ImageField(upload_to='media/logo/',null=True,blank=True)
@@ -77,6 +78,7 @@ Session_Type=(
         ('video_upscaler','video_upscaler'),
         ('image_to_3d','image_to_3d'),
         ('video_effect','video_effect'),
+        ('text_to_speech','text_to_speech'),
         
     )
 class ChatSession(models.Model):
