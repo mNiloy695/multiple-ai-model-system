@@ -54,11 +54,7 @@ def gemini_response(
         user.save()
         trackUsedWords(user.id, prompt_words)
 
-        if model_type=="text_to_video":
-            if f"{width}:{height}" not in ["9:16",'16:9']:
-                aspect_ratio="16:9"
-            
-            video_generation_by_veo3(model_id=model_id,api_key=api_key,resolution=resolution,prompt=message,aspect_ratio=aspect_ratio)
+  
             
             
 

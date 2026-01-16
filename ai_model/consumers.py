@@ -27,7 +27,7 @@ from django.db import transaction
 from .image_upscaler.image_upscaler import image_upscaler_wavespeed_ai
 from .image_edit.image_edit import image_edit
 from .image_to_3d.image_to_3d import image_to_3d
-from .download_video.download_veo_video import video_generation_by_veo3
+from .download_video.download_veo_video import generate_veo3_preview_video
 
 def detect_media_easy(url):
     url = url.lower()
@@ -245,11 +245,14 @@ class ChatConsumer(AsyncWebsocketConsumer):
             base_cost=getattr(model,"base_cost",500)
             aspect_ratio=data.get("aspect_ratio",None)
             resolution=data.get("resolution",None)
+        
             if model_type=="text_to_video":
                 try:
-                    ai_response=await database_sync_to_async(video_generation_by_veo3)(api_key=api_key, prompt=message_content, aspect_ratio=aspect_ratio, model_id=model_id, resolution=resolution,user_id=self.user.id,base_cost=base_cost)
+                    ai_response=await database_sync_to_async(generate_veo3_preview_video)(api_key=api_key, prompt=message_content, aspect_ratio=aspect_ratio, model_id=model_id, resolution=resolution,user_id=self.user.id,base_cost=base_cost)
+                    
 
                     if ai_response:
+                        print(ai_response,"--------------------")
                         saved_ai_message = await self.save_message(
                             self.session_id,
                             self.user,
