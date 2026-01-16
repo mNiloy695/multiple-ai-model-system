@@ -5,22 +5,26 @@ import requests, base64
 from .track_used_word_subscription import trackUsedWords
 from django.core.files.base import ContentFile
 import base64
-
+import time
 from .image_to_url_save import download_and_store_webp
-
-
+from google.genai import types
+# from .download_video.download_veo_video import download_and_store_video
 User = get_user_model()
-
 
 def gemini_response(
     message,
     model_id,
     api_key,
     user_id,
+    width,
+    height,
     images_data_list=None,
     summary=None,
     num_images=1,  # Always 1
     base_cost=500,  # Default base cost
+    model_type=None,
+    resolution="720p"
+    
 ):
     try:
         client = genai.Client(api_key=api_key)
@@ -49,6 +53,17 @@ def gemini_response(
         user.total_token_used += prompt_words
         user.save()
         trackUsedWords(user.id, prompt_words)
+
+        if model_type=="text_to_video":
+            if f"{width}:{height}" not in ["9:16",'16:9']:
+                aspect_ratio="16:9"
+            
+            video_generation_by_veo3(model_id=model_id,api_key=api_key,resolution=resolution,prompt=message,aspect_ratio=aspect_ratio)
+            
+            
+
+
+
         is_image_generation = _is_image_generation_model(model_id)
         images = []
 

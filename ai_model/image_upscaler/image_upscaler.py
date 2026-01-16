@@ -119,5 +119,5 @@ def  image_upscaler_wavespeed_ai(model_id,api_key,user_id,base_cost,image_url,ta
             print(f"Error: {response.status_code}, {response.text}")
             break
 
-        time.sleep(0.1)
+        # time.sleep(0.1)
 

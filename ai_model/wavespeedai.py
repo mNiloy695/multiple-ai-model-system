@@ -97,7 +97,7 @@ def wavespeed_ai_call(model_id, api_key, payload=None, poll_interval=0.5, user_i
             print("hurrah faild")
             return {"error": result.get("error", f"{model_id} generation failed")}
 
-        time.sleep(poll_interval)
+      
 
 # Example usage:
 

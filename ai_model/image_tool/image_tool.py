@@ -156,7 +156,7 @@ def image_tool_via_wavespeedai(image_url, prompt,api_key,model_id,base_cost,user
             # print(f"Error: {response.status_code}, {response.text}")
             break
 
-        time.sleep(0.1)
+        # time.sleep(0.1)
     
 
 

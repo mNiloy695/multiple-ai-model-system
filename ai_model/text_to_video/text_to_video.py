@@ -207,4 +207,4 @@ def text_to_video_generation(model_id, prompt, api_key, duration, height, width,
         if status == "failed":
             raise Exception(data.get("error", "Video generation failed"))
 
-        time.sleep(0.5)
+        # time.sleep(0.5)

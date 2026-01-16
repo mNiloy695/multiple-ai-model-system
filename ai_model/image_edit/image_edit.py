@@ -136,5 +136,5 @@ def image_edit(model_id,prompt,api_key,user_id,output_format="png",aspect_ratio=
             print(f"Error: {response.status_code}, {response.text}")
             break
 
-        time.sleep(0.1)
+        
 

@@ -175,5 +175,5 @@ def text_to_sound(model_id,api_key,user_id,base_cost,bitrate=None,emotion="happy
             print(f"Error: {response.status_code}, {response.text}")
             break
 
-        time.sleep(0.5)
+        # time.sleep(0.5)
 

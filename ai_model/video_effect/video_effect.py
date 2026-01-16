@@ -122,5 +122,5 @@ def video_effect(model_id,api_key,user_id,images,base_cost,duration=None,effect=
             print(f"Error: {response.status_code}, {response.text}")
             break
 
-        time.sleep(0.5)
+        # time.sleep(0.5)
 

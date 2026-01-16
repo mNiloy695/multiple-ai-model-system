@@ -27,6 +27,7 @@ from django.db import transaction
 from .image_upscaler.image_upscaler import image_upscaler_wavespeed_ai
 from .image_edit.image_edit import image_edit
 from .image_to_3d.image_to_3d import image_to_3d
+from .download_video.download_veo_video import video_generation_by_veo3
 
 def detect_media_easy(url):
     url = url.lower()
@@ -240,11 +241,34 @@ class ChatConsumer(AsyncWebsocketConsumer):
             self.user=fresh_user
             model_id = getattr(model, "model_id", None)
             api_key = getattr(model, "api_key", None)
-            if model_id and api_key:
+            model_type=getattr(model,"model_type",None)
+            base_cost=getattr(model,"base_cost",500)
+            aspect_ratio=data.get("aspect_ratio",None)
+            resolution=data.get("resolution",None)
+            if model_type=="text_to_video":
                 try:
-                    base_cost=getattr(model,"base_cost",500)
+                    ai_response=await database_sync_to_async(video_generation_by_veo3)(api_key=api_key, prompt=message_content, aspect_ratio=aspect_ratio, model_id=model_id, resolution=resolution,user_id=self.user.id,base_cost=base_cost)
+
+                    if ai_response:
+                        saved_ai_message = await self.save_message(
+                            self.session_id,
+                            self.user,
+                            "ai",
+                            content = ai_response.get("text") or ai_response.get("content") or ai_response.get("error") or "",
+
+                            images=ai_response.get("images", [])
+                        )
+                        if saved_ai_message:
+                            await self.send(text_data=json.dumps({"type": "new_message", "message": saved_ai_message},ensure_ascii=False))
+
+                except Exception as e:
+                    await self.send(text_data=json.dumps({"type": "error", "message": f"AI error: {str(e)}"},ensure_ascii=False))
+                
+            else:
+                try:
+                    
                     ai_response = await database_sync_to_async(gemini_response)(
-                        message_content, model_id, api_key, self.user.id,user_images,summary=session_data.get("summary"),num_images=num_images,base_cost=base_cost
+                        message_content, model_id, api_key, self.user.id,user_images,summary=session_data.get("summary",""),num_images=num_images,base_cost=base_cost,model_type=model_type
                     )
                     if ai_response:
                         saved_ai_message = await self.save_message(
@@ -266,6 +290,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
             height=data.get("height",512)
             width=data.get("width",512)
             duration=data.get("duration",4)
+            aspect_ratio=data.get("aspect_ratio",None)
             # fresh_user=await database_sync_to_async(User.objects.get)(id=self.user.id)
             # self.user=fresh_user
             # 1024x1024 (square) - 1536x1024 (landscape) - 1024x1536
@@ -274,8 +299,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
             if model_id and api_key:
                 try:
                     base_cost=getattr(model,"base_cost",500)
-                    ai_response = await database_sync_to_async(gpt_response)(message=message_content,model_id=model_id,api_key=api_key,user_id=self.user.id,images_data_list=user_images,summary=session_data.get("summary"),num_images=num_images,base_cost=base_cost,duration=duration,)
-
+                    ai_response = await database_sync_to_async(gpt_response)(message=message_content,model_id=model_id,api_key=api_key,user_id=self.user.id,images_data_list=user_images,summary=session_data.get("summary"),num_images=num_images,base_cost=base_cost,duration=duration,height=height,width=width,aspect_ratio=aspect_ratio)
 
                     
                     if ai_response:
