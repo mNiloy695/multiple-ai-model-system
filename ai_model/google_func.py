@@ -13,16 +13,17 @@ User = get_user_model()
 # =========================
 # COST CALCULATION
 # =========================
-def calculate_cost(model_type, *, base_cost, words=0, num_images=1):
+def calculate_cost(model_type, *, base_cost, words=0, num_images=1, input_images_count=0):
     base_cost = Decimal(str(base_cost))
 
     if model_type in {"chat", "text_generation", "code_generation", "image_understanding"}:
-        return Decimal(words) * base_cost
+        # Charge for words + input images (flat fee per input image)
+        return (Decimal(words) * base_cost) + (Decimal(input_images_count) * base_cost)
 
     if model_type == "image_generation":
         return Decimal(num_images) * base_cost
     
-    return Decimal("0")
+    return Decimal(base_cost)
 
 # =========================
 # HELPER: Detect Model Type
@@ -81,12 +82,14 @@ def gemini_response(
             model_type = _detect_model_type(model_id)
 
         prompt_words = len(message.split())
+        input_images_count = len(images_data_list) if images_data_list else 0
         
         charge_amount = calculate_cost(
             model_type,
             base_cost=base_cost,
             words=prompt_words,
-            num_images=num_images
+            num_images=num_images,
+            input_images_count=input_images_count
         )
 
         # =========================
@@ -110,9 +113,30 @@ def gemini_response(
             credit_account.save(update_fields=["credits"])
 
             user.total_token_used += charge_amount
-            user.save(update_fields=["total_token_used"])
-
             trackUsedWords(user.id, prompt_words)
+            
+            print(f"DEBUG: Google Upfront deduction. BaseCost: {base_cost}, Words: {prompt_words}, Cost: {charge_amount}, New Balance: {credit_account.credits}")
+
+            # --- CALCULATE REMAINING CREDITS FOR OUTPUT ---
+            remaining_credits = credit_account.credits
+            
+            # Calculate how many words/tokens they can afford
+            if base_cost > 0:
+                max_response_words = int(remaining_credits / Decimal(str(base_cost)))
+            else:
+                max_response_words = 8192
+
+            # If they can't afford any output, stop here
+            if max_response_words < 1 and model_type in {"chat", "text_generation", "code_generation"}:
+                 # Refund prompt
+                 credit_account.credits += charge_amount
+                 credit_account.save(update_fields=["credits"])
+                 user.total_token_used -= charge_amount
+                 user.save(update_fields=["total_token_used"])
+                 return _error("Insufficient credits for response.")
+            
+            # Cap at safe limit (Gemini supports up to 8k or more depending on version)
+            final_max_tokens = min(max_response_words, 8192)
 
         # =========================
         # MODEL EXECUTION
@@ -133,12 +157,16 @@ def gemini_response(
             
             # Extract image
             if hasattr(response, "candidates") and response.candidates:
-                 for part in response.candidates[0].content.parts:
-                    if hasattr(part, "inline_data") and part.inline_data:
-                       b64_data = base64.b64encode(part.inline_data.data).decode("utf-8")
-                       images.append(f"data:{part.inline_data.mime_type};base64,{b64_data}")
+                 for candidate in response.candidates:
+                     if hasattr(candidate.content, "parts"):
+                         for part in candidate.content.parts:
+                            # Check for regular inline_data (common in gemini-1.5-flash)
+                            if hasattr(part, "inline_data") and part.inline_data:
+                               b64_data = base64.b64encode(part.inline_data.data).decode("utf-8")
+                               mime_type = part.inline_data.mime_type or "image/png"
+                               images.append(f"data:{mime_type};base64,{b64_data}")
             
-            images = download_and_store_webp(images)
+            # images conversion is now handled at the end
             text = f"{len(images)} image(s) generated successfully."
 
         else: 
@@ -167,19 +195,42 @@ def gemini_response(
             
             contents.append(user_part)
 
-            response = client.models.generate_content(model=model_id, contents=contents)
+            # --- LIMIT OUTPUT TOKENS ---
+            config = types.GenerateContentConfig(
+                max_output_tokens=final_max_tokens
+            )
+
+            response = client.models.generate_content(
+                model=model_id, 
+                contents=contents,
+                config=config 
+            )
             
             # Extract text
             if hasattr(response, "candidates") and response.candidates:
                 parts = response.candidates[0].content.parts
                 text = " ".join([getattr(p, "text", "") for p in parts if getattr(p, "text", None)])
             
-            # Legacy logic: Check if we need to deduct for RESPONSE words?
-            # OpenAI implementation only charged for prompt words in the visible active code.
-            # But just in case, if the user wants strict parity with "others" and if older Google code did it:
-            # The older Google code lines 146-156 DID deduct response words.
-            # I will omit it to match OpenAI's current visible implementation (which only calculates charge_amount based on prompt inputs).
-            # If I should add it, I would need another transaction block. I'll stick to OpenAI style: charge upfront.
+            # --- CHARGE FOR OUTPUT TOKENS ---
+            # Only charge for text/chat models. Image generation is pre-paid.
+            if text and model_type in {"chat", "text_generation", "code_generation", "image_understanding"}:
+                response_words = len(text.split())
+                response_cost = calculate_cost( model_type, base_cost=base_cost, words=response_words)
+                
+                print(f"DEBUG: Output generated. Words: {response_words}, Cost: {response_cost}")
+
+                with transaction.atomic():
+                    credit_account = CreditAccount.objects.select_for_update().filter(user=user).first()
+                    if credit_account:
+                        credit_account.credits -= response_cost
+                        credit_account.save(update_fields=["credits"])
+                        
+                        user.total_token_used += response_cost
+                        user.save(update_fields=["total_token_used"])
+                        
+                        trackUsedWords(user.id, response_words)
+                        print(f"DEBUG: Output deduction success. Final Balance: {credit_account.credits}")
+
 
             # Extract inline images from response if any (Gemini sometimes returns images in chat)
             if hasattr(response, "candidates") and response.candidates:
@@ -188,18 +239,24 @@ def gemini_response(
                          b64_data = base64.b64encode(part.inline_data.data).decode("utf-8")
                          images.append(f"data:image/png;base64,{b64_data}")
 
+        # Convert simple Base64 images to stored URLs for ALL model types
+        # This handles both explicit image_generation and chat models returning images (like Flash)
+        if images:
+            try:
+                images = download_and_store_webp(images)
+            except Exception as img_err:
+                print(f"DEBUG: Image processing failed: {img_err}")
+                # Do NOT fail the request, just return empty images or whatever worked
+
         return {"text": text, "images": images, "sender": "ai", "error": None}
 
     except Exception as e:
         # =========================
         # EXACT REFUND (SAFE)
         # =========================
+        print(f"DEBUG: CRITICAL ERROR causing Refund: {str(e)}")
         try:
             with transaction.atomic():
-                # We need to re-fetch credit account to be safe or use the updated local instance if possible, 
-                # but safer to query again or just use the ID.
-                # Since we are in an exception, usage of 'credit_account' object is safe if it was defined.
-                # But to be robust:
                 refund_user = User.objects.filter(id=user_id).first()
                 if refund_user:
                     refund_account = CreditAccount.objects.select_for_update().filter(user=refund_user).first()
@@ -209,7 +266,8 @@ def gemini_response(
                         
                         refund_user.total_token_used -= charge_amount
                         refund_user.save(update_fields=["total_token_used"])
-        except Exception:
-            pass # Failed to refund, critical error but we can't do much here
+                        print(f"DEBUG: Refunded {charge_amount} credits due to error.")
+        except Exception as refund_err:
+            print(f"DEBUG: Refund FAILED: {refund_err}")
 
         return _error(f"Gemini request failed: {str(e)}")

@@ -1,68 +1,167 @@
 from openai import OpenAI
 from django.contrib.auth import get_user_model
 from accounts.models import CreditAccount
-from .openai_func import _error
+from django.db import transaction
+from .track_used_word_subscription import trackUsedWords
+from decimal import Decimal
 
 User = get_user_model()
 
-MODEL_LIMIT = 4096
-TOKEN_PER_WORD = 1.3
+# =========================
+# HELPER: Error Response
+# =========================
+def _error(msg: str) -> dict:
+    return {
+        "text": "",
+        "images": [],
+        "sender": "system",
+        "error": msg,
+    }
 
-def call_deepseek_for_chat(model_id, api_key, user_id, base_cost, message, temperature=0.7):
+# =========================
+# COST CALCULATION
+# =========================
+def calculate_cost(base_cost, words):
+    # For chat models, cost is typically per word/token
+    # Using the same logic as other files: input words * base_cost
+    base_cost = Decimal(str(base_cost))
+    print("this is the deepseek based cost",base_cost," and this is words",words)
+    return Decimal(words) * base_cost
+
+# =========================
+# MAIN FUNCTION
+# =========================
+def call_deepseek_for_chat(
+    model_id: str, 
+    api_key: str, 
+    user_id: int, 
+    base_cost: int = 1, 
+    message: str = "", 
+    temperature: float = 0.7
+):
     try:
-        user = User.objects.get(id=user_id)
-        account = CreditAccount.objects.get(user=user)
-    except User.DoesNotExist:
-        return _error("User not found")
-    except CreditAccount.DoesNotExist:
-        return _error("Account not found")
+        # 1. Fetch User
+        user = User.objects.filter(id=user_id).first()
+        if not user:
+            return _error("User not found")
 
-    
-    input_words = len(message.split())
-    input_tokens = int(input_words * TOKEN_PER_WORD)
+        # 2. Calculate Cost (Upfront for prompt)
+        prompt_words = len(message.split())
+        charge_amount = calculate_cost(base_cost, prompt_words)
 
-    if account.credits < input_tokens:
-        return _error("Insufficient Credits")
+        # 3. Credit Check & Deduction (Atomic)
+        with transaction.atomic():
+            credit_account = (
+                CreditAccount.objects
+                .select_for_update()
+                .filter(user=user)
+                .first()
+            )
 
-    
-    available_tokens = min(
-        int(account.credits - input_tokens),
-        MODEL_LIMIT - input_tokens
-    )
+            if not credit_account:
+                return _error("Credit account not found")
 
-    if available_tokens <= 0:
-        return _error("Not enough credits for response")
+            if credit_account.credits < charge_amount:
+                return _error(f"Insufficient credits. Required: {charge_amount}")
 
-    try:
-        client = OpenAI(
-            api_key=api_key,
-            base_url="https://api.deepseek.com"
-        )
+            # Deduct credits for prompt first
+            credit_account.credits -= charge_amount
+            credit_account.save(update_fields=["credits"])
 
-        response = client.chat.completions.create(
-            model="deepseek-chat",
-            messages=[
-                {"role": "system", "content": "You are a helpful assistant"},
-                {"role": "user", "content": message},
-            ],
-            max_tokens=available_tokens,
-            temperature=temperature,
-        )
+            # Update stats
+            user.total_token_used += charge_amount
+            user.save(update_fields=["total_token_used"])
 
-        reply_text = response.choices[0].message.content
+            trackUsedWords(user.id, prompt_words)
+            print(f"DEBUG: DeepSeek Upfront deduction. BaseCost: {base_cost}, Words: {prompt_words}, Cost: {charge_amount}, New Balance: {credit_account.credits}")
+            
+            # --- CALCULATE REMAINING CREDITS FOR OUTPUT ---
+            remaining_credits = credit_account.credits
+            
+            # If base_cost is > remaining credits, they can't even afford 1 word of output.
+            # But "base_cost" here is usually "cost per 1 word".
+            # So max_words = remaining_credits / base_cost
+            if base_cost > 0:
+                max_response_words = int(remaining_credits / Decimal(str(base_cost)))
+            else:
+                max_response_words = 4096 # Infinite if free?
 
-        
-        output_tokens = int(len(reply_text.split()) * TOKEN_PER_WORD)
+            if max_response_words < 1:
+                 # Refund the prompt cost because we can't generate anything useful
+                 credit_account.credits += charge_amount
+                 credit_account.save(update_fields=["credits"])
+                 user.total_token_used -= charge_amount
+                 user.save(update_fields=["total_token_used"])
+                 print("DEBUG: DeepSeek Insufficient credits for response. Refunded.")
+                 return _error("Insufficient credits for any response.")
 
-        total_tokens_used = input_tokens + output_tokens
+            # Cap at model limit (e.g. 4096)
+            final_max_tokens = min(max_response_words, 4096)
+            
+        # 4. API Call
+        try:
+            client = OpenAI(
+                api_key=api_key,
+                base_url="https://api.deepseek.com"
+            )
 
-        
-        account.credits -= total_tokens_used
-        account.user.total_token_used += total_tokens_used
-        account.user.save()
-        account.save()
+            response = client.chat.completions.create(
+                model="deepseek-chat", # or use model_id if dynamic
+                messages=[
+                    {"role": "system", "content": "You are a helpful assistant"},
+                    {"role": "user", "content": message},
+                ],
+                max_tokens=final_max_tokens, # Limit generation to what they can pay for
+                temperature=temperature,
+            )
 
-        return {"text": reply_text}
+            reply_text = response.choices[0].message.content
+            
+            # --- CHARGE FOR OUTPUT TOKENS ---
+            response_words = len(reply_text.split())
+            response_cost = calculate_cost(base_cost, response_words)
+            
+            print(f"DEBUG: DeepSeek Output generated. Words: {response_words}, Cost: {response_cost}")
+
+            # Atomic transaction for response cost
+            with transaction.atomic():
+                credit_account = CreditAccount.objects.select_for_update().filter(user=user).first()
+                if credit_account:
+                    # Check if they went negative (optional policy: allow small debt or cut off?)
+                    # Here we just deduct, potentially going negative if they ran out mid-stream,
+                    # OR we could check. Let's just deduct.
+                    credit_account.credits -= response_cost
+                    credit_account.save(update_fields=["credits"])
+                    
+                    user.total_token_used += response_cost
+                    user.save(update_fields=["total_token_used"])
+                    
+                    trackUsedWords(user.id, response_words)
+                    print(f"DEBUG: DeepSeek Output deduction success. Final Balance: {credit_account.credits}")
+
+            return {
+                "text": reply_text,
+                "images": [],
+                "sender": "ai",
+                "error": None
+            }
+
+        except Exception as api_error:
+            # 5. Refund on Failure
+            print(f"DEBUG: DeepSeek API Error causing Refund: {str(api_error)}")
+            with transaction.atomic():
+                # Re-fetch logic or use updated objects
+                # Note: 'credit_account' object is stale, re-fetching is safer or just incrementing
+                refund_account = CreditAccount.objects.select_for_update().filter(user=user).first()
+                if refund_account:
+                    refund_account.credits += charge_amount
+                    refund_account.save(update_fields=["credits"])
+                    
+                    user.total_token_used -= charge_amount
+                    user.save(update_fields=["total_token_used"])
+                    print(f"DEBUG: DeepSeek Refunded {charge_amount} credits.")
+            
+            return _error(f"DeepSeek API error: {str(api_error)}")
 
     except Exception as e:
-        return {"error": "An error occurred"}
+        return _error(f"System error: {str(e)}")

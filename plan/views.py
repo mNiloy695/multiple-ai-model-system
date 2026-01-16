@@ -153,7 +153,7 @@ class VerifyGooglePurchaseView(APIView):
         plan_id = request.data.get("plan")
         purchase_token = request.data.get("purchase_token")
         user=request.user
-
+        
         # 1️⃣ Fetch plan info
         plan = get_object_or_404(PlanModel, id=plan_id)
         try:
@@ -255,6 +255,12 @@ class VerifyGooglePurchaseView(APIView):
                     message=f'{plan.words_or_credits} credits added successfully in you account'
 
                 )
+            
+            # Unlock models for the user
+            # Since this project treats coin purchases as enabling subscription features:
+            if not user.subscribed:
+                user.subscribed = True
+                user.save()
 
 
             # if plan.subscription_duration !="one-time":

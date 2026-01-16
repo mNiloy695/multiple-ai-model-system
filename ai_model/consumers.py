@@ -242,10 +242,18 @@ class ChatConsumer(AsyncWebsocketConsumer):
             model_id = getattr(model, "model_id", None)
             api_key = getattr(model, "api_key", None)
             model_type=getattr(model,"model_type",None)
-            base_cost=getattr(model,"base_cost",500)
+            if model_type:
+                 model_type = model_type.strip()
+            base_cost=getattr(model,"base_cost",0)
+            if not base_cost or base_cost <= 0:
+                base_cost = 500
             aspect_ratio=data.get("aspect_ratio",None)
             resolution=data.get("resolution",None)
         
+            if not self.user.subscribed:
+                 await self.send(json.dumps({"type":"error","message":"Only DeepSeek model is available for free users. Please upgrade/buy coins to access Google models."}))
+                 return
+
             if model_type=="text_to_video":
                 try:
                     ai_response=await database_sync_to_async(generate_veo3_preview_video)(api_key=api_key, prompt=message_content, aspect_ratio=aspect_ratio, model_id=model_id, resolution=resolution,user_id=self.user.id,base_cost=base_cost)
@@ -306,10 +314,15 @@ class ChatConsumer(AsyncWebsocketConsumer):
             # self.user=fresh_user
             # 1024x1024 (square) - 1536x1024 (landscape) - 1024x1536
             
+            if not self.user.subscribed:
+                 await self.send(json.dumps({"type":"error","message":"Only DeepSeek model is available for free users. Please upgrade to access OpenAI models."}))
+                 return
 
             if model_id and api_key:
                 try:
-                    base_cost=getattr(model,"base_cost",500)
+                    base_cost=getattr(model,"base_cost",0)
+                    if not base_cost or base_cost <= 0:
+                        base_cost = 500
                     ai_response = await database_sync_to_async(gpt_response)(message=message_content,model_id=model_id,api_key=api_key,user_id=self.user.id,images_data_list=user_images,summary=session_data.get("summary"),num_images=num_images,base_cost=base_cost,duration=duration,height=height,width=width,aspect_ratio=aspect_ratio)
 
                     
@@ -346,6 +359,9 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
 
         elif provider=='leonardo':
+            if not self.user.subscribed:
+                 await self.send(json.dumps({"type":"error","message":"Only DeepSeek model is available for free users. Please upgrade to access Leonardo models."}))
+                 return
             model_id = getattr(model, "model_id", None)
             api_key = getattr(model, "api_key", None)
             num_images=data.get("num_images",1)
@@ -357,7 +373,9 @@ class ChatConsumer(AsyncWebsocketConsumer):
             if model_id and api_key:
                 # print("i am in the leonardo")
                 try:
-                    base_cost=getattr(model,"base_cost",500)
+                    base_cost=getattr(model,"base_cost",0)
+                    if not base_cost or base_cost <= 0:
+                        base_cost = 500
                     ai_response=await database_sync_to_async(leonardo_response)(
                         prompt=message_content,user_id=self.user.id,model_id=model_id,api_key=api_key,num_images=num_images,width=width,height=height,summary=session_data.get("summary"),BASE_COST=base_cost
                     )
@@ -377,6 +395,9 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
 
         elif provider=="wavespeedai":
+            if not self.user.subscribed:
+                 await self.send(json.dumps({"type":"error","message":"Only DeepSeek model is available for free users. Please upgrade to access WavespeedAI."}))
+                 return
             model_id = getattr(model, "model_id", None)
             api_key = getattr(model, "api_key", None)
             width = data.get("width", 1024)
@@ -398,8 +419,12 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
 
             if model_id and api_key:
-                base_cost=getattr(model,"base_cost",500)
-                model_type=getattr(model,"model_type")
+                base_cost=getattr(model,"base_cost",0)
+                if not base_cost or base_cost <= 0:
+                    base_cost = 500
+                model_type=getattr(model,"model_type",None)
+                if model_type:
+                     model_type = model_type.strip()
                 print(model_type)
                 
                 #for chat model
@@ -508,7 +533,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                                 self.session_id,
                                 self.user,
                                 "ai",
-                                content="Image processed successfully",
+                                "Image processed successfully",
                                 images=[ai_response]
                             )
                             if saved_ai_message:
@@ -534,7 +559,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                                 self.session_id,
                                 self.user,
                                 "ai",
-                                content="Image upscaled successfully",
+                                "Image upscaled successfully",
                                 images=[ai_response]
                             )
                             if saved_ai_message:
@@ -566,7 +591,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                                 self.session_id,
                                 self.user,
                                 "ai",
-                                content="Image edited successfully",
+                                "Image edited successfully",
                                 images=[ai_response]
                             )
                             if saved_ai_message:
@@ -594,7 +619,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                                 self.session_id,
                                 self.user,
                                 "ai",
-                                content="3d image succesfully genereated",
+                                "3d image succesfully genereated",
                                 images=[ai_response]
                             )
                         if saved_ai_message:
@@ -635,7 +660,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                                 self.session_id,
                                 self.user,
                                 "ai",
-                                content="Video Generated successfully",
+                                "Video Generated successfully",
                                 images=[ai_response]
                         )
                            if saved_ai_message:
@@ -670,7 +695,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                                 self.session_id,
                                 self.user,
                                 "ai",
-                                content="Video Generated successfully",
+                                "Video Generated successfully",
                                 images=[ai_response]
                         )
                            if saved_ai_message:
@@ -696,13 +721,18 @@ class ChatConsumer(AsyncWebsocketConsumer):
             from .deepseek import call_deepseek_for_chat
             model_id=getattr(model,'model_id',None)
             api_key=getattr(model,"api_key",None)
-            base_cost=getattr(model,"base_cost",1)
+            model_type=getattr(model,"model_type",None)
+            if model_type:
+                model_type = model_type.strip()
+            base_cost=getattr(model,"base_cost",0)
+            if not base_cost or base_cost <= 0:
+                base_cost = 1
 
             ai_response=await database_sync_to_async(call_deepseek_for_chat)(
-                user_id=self.user,
+                user_id=self.user.id,
                 model_id=model_id,
                 api_key=api_key,
-                base_cose=base_cost,
+                base_cost=base_cost,
                 message=message_content
             )
             if ai_response:
@@ -721,6 +751,9 @@ class ChatConsumer(AsyncWebsocketConsumer):
         
 
         elif provider=="falai":
+            if not self.user.subscribed:
+                 await self.send(json.dumps({"type":"error","message":"Only DeepSeek model is available for free users. Please upgrade to access FalAI."}))
+                 return
             model_id = getattr(model, "model_id", None)
             api_key = getattr(model, "api_key", None)
             num_images=data.get("num_images",1)
@@ -733,7 +766,9 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
             if model_id and api_key:
                 try:
-                    base_cost=getattr(model,"base_cost",500)
+                    base_cost=getattr(model,"base_cost",0)
+                    if not base_cost or base_cost <= 0:
+                        base_cost = 500
                     ai_response = await database_sync_to_async(call_fal_ai)(
                         api_key, message_content,model_id,self.user.id,num_images,base_cost,seed,steps,cfg_scale,size
                     )

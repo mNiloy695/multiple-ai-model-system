@@ -208,7 +208,10 @@ def generate_veo3_preview_video(
         # Check if video is a URI (regular URL)
         elif hasattr(video_data.video, 'uri') and video_data.video.uri:
             print(f"Video stored at URI: {video_data.video.uri}")
-            video_bytes = requests.get(video_data.video.uri).content
+            uri_response = requests.get(video_data.video.uri)
+            if uri_response.status_code != 200:
+                 raise RuntimeError(f"Failed to download video from URI. Status: {uri_response.status_code}, Response: {uri_response.text}")
+            video_bytes = uri_response.content
 
         # Check if video is stored in GCS
         elif hasattr(video_data.video, 'gcs_uri') and video_data.video.gcs_uri:

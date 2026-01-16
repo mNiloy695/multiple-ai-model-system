@@ -223,27 +223,30 @@ User = get_user_model()
 # =========================
 # COST CALCULATION
 # =========================
-def calculate_cost(model_type, *, base_cost, words=0, num_images=1,secounds=4):
+# =========================
+# COST CALCULATION
+# =========================
+def calculate_cost(model_type, *, base_cost, words=0, num_images=1, secounds=4, input_images_count=0):
     base_cost = Decimal(str(base_cost))
 
-    if model_type in {"chat", "completion"}:
-        return Decimal(words) * base_cost
+    if model_type in {"chat", "completion", "image_understanding"}:
+        # Charge for words + input images (flat fee per image)
+        return (Decimal(words) * base_cost) + (Decimal(input_images_count) * base_cost)
 
     if model_type == "image_generation":
         return Decimal(num_images) * base_cost
     
-    if model_type=="video_generation":
-        return Decimal(secounds)*base_cost
+    if model_type == "video_generation":
+        return Decimal(secounds) * base_cost
 
     if model_type in {
-        "image_understanding",
         "audio_generation",
         "embedding",
         "moderation",
     }:
         return base_cost  # flat cost
 
-    return Decimal("0")
+    return Decimal(base_cost)
 
 import time
 # =========================
@@ -262,6 +265,7 @@ def gpt_response(
     height=1024,
     width=1024,
     duration=4,
+    aspect_ratio=None 
 ):
 
    
@@ -279,14 +283,15 @@ def gpt_response(
     print("---------------model type--------------",model_type)
 
     prompt_words = len(message.split())
+    input_images_count = len(images_data_list) if images_data_list else 0
 
     charge_amount = calculate_cost(
         model_type,
         base_cost=base_cost,
         words=prompt_words,
         num_images=num_images,
-        secounds=
-        (duration)
+        secounds=duration,
+        input_images_count=input_images_count
     )
 
     # =========================
@@ -313,12 +318,34 @@ def gpt_response(
         user.save(update_fields=["total_token_used"])
 
         trackUsedWords(user.id, prompt_words)
+        print(f"DEBUG: OpenAI Upfront deduction. BaseCost: {base_cost}, Words: {prompt_words}, Cost: {charge_amount}, New Balance: {credit_account.credits}")
+        
+        # --- CALCULATE REMAINING CREDITS FOR OUTPUT ---
+        remaining_credits = credit_account.credits
+        
+        # Calculate how many words/tokens they can afford
+        if base_cost > 0:
+            max_response_words = int(remaining_credits / Decimal(str(base_cost)))
+        else:
+            max_response_words = 4096 
+
+        # If they can't afford any output, stop here
+        if max_response_words < 1 and model_type in {"chat", "completion", "image_understanding"}:
+             # Refund prompt
+             credit_account.credits += charge_amount
+             credit_account.save(update_fields=["credits"])
+             user.total_token_used -= charge_amount
+             user.save(update_fields=["total_token_used"])
+             return _error("Insufficient credits for response.")
+        
+        # Cap at safe limit
+        final_max_tokens = min(max_response_words, 4096)
 
     try:
         # =========================
         # MODEL EXECUTION
         # =========================
-        if model_type in {"chat", "completion"}:
+        if model_type in {"chat", "completion", "image_understanding"}:
             messages = []
 
             if summary:
@@ -327,18 +354,58 @@ def gpt_response(
                     "content": summary
                 })
 
+            # Construct multimodal user message if images exist
+            user_content = []
+            if message:
+                user_content.append({"type": "text", "text": message})
+            
+            if images_data_list:
+                for img_url in images_data_list:
+                    user_content.append({
+                        "type": "image_url", 
+                        "image_url": {"url": img_url}
+                    })
+            
+            if not user_content:
+                user_content = " "
+
             messages.append({
                 "role": "user",
-                "content": message
+                "content": user_content
             })
 
             res = client.chat.completions.create(
                 model=model_id,
                 messages=messages,
+                max_tokens=final_max_tokens  # Force limit based on credits
             )
 
             text = res.choices[0].message.content.strip()
-            images = []
+            # images = [] # Already init
+
+            # --- CHARGE FOR OUTPUT TOKENS ---
+            if text:
+                response_words = len(text.split())
+                response_cost = calculate_cost(
+                    model_type,
+                    base_cost=base_cost,
+                    words=response_words
+                )
+                
+                print(f"DEBUG: Output generated. Words: {response_words}, Cost: {response_cost}")
+
+                with transaction.atomic():
+                     # Re-fetch credit account to be safe
+                     credit_account_updated = CreditAccount.objects.select_for_update().filter(user=user).first()
+                     if credit_account_updated:
+                        credit_account_updated.credits -= response_cost
+                        credit_account_updated.save(update_fields=["credits"])
+                        
+                        user.total_token_used += response_cost
+                        user.save(update_fields=["total_token_used"])
+                        
+                        trackUsedWords(user.id, response_words)
+                        print(f"DEBUG: Output deduction success. Final Balance: {credit_account_updated.credits}")
 
         elif model_type == "image_generation":
             if f"{width}x{height}" not in ["1024x1024","1536x1024"]:
@@ -354,26 +421,6 @@ def gpt_response(
             text = f"{num_images} image(s) generated"
             images = [img.url for img in res.data]
 
-        elif model_type == "image_understanding":
-            res = client.chat.completions.create(
-                model=model_id,
-                messages=[
-                    {
-                        "role": "user",
-                        "content": (
-                            [{"type": "text", "text": message}] +
-                            [
-                                {"type": "image_url", "image_url": {"url": img}}
-                                for img in images_data_list
-                            ]
-                        ),
-                    }
-                ],
-            )
-
-            text = res.choices[0].message.content.strip()
-            images = []
-
         elif model_type == "audio_generation":
             res = client.audio.transcriptions.create(
                 model=model_id,
@@ -381,7 +428,7 @@ def gpt_response(
             )
 
             text = res.text.strip()
-            images = []
+            # images = []
 
         elif model_type == "embedding":
             res = client.embeddings.create(
@@ -390,7 +437,7 @@ def gpt_response(
             )
 
             text = str(res.data[0].embedding)
-            images = []
+            # images = []
 
         elif model_type == "moderation":
             res = client.moderations.create(
@@ -399,7 +446,7 @@ def gpt_response(
             )
 
             text = str(res.results[0])
-            images = []
+            # images = []
         elif model_type=="video_generation":
             print("viddooooooooooooooooooooooooooooooooo")
             if f"{width}x{height}" not in ["720x1280","1280x720"]:
@@ -407,9 +454,9 @@ def gpt_response(
                 height=1280
 
             job = client.videos.create(
-                model="sora-2",
-                prompt="A cinematic shot of a tiger walking through a jungle at sunrise",
-                seconds=str(duration),
+                model="sora-2", # Hardcoded or use model_id? user code used sora-2
+                prompt=message or "Video generation", 
+                seconds=int(duration), # Ensure int
                 size=f"{width}x{height}"
                 )
             
@@ -427,7 +474,9 @@ def gpt_response(
 
             #     else:
             #           print("Unknown video status:", result.status)
-
+            text = f"Video generation started: {getattr(job, 'id', 'unknown')}"
+            # No images/video URL yet if async?
+            
         return {
             "text": text or "",
             "images": images or [],
@@ -439,12 +488,14 @@ def gpt_response(
         # =========================
         # EXACT REFUND (SAFE)
         # =========================
+        print(f"DEBUG: CRITICAL ERROR causing Refund: {str(e)}")
         with transaction.atomic():
             credit_account.credits += charge_amount
             credit_account.save(update_fields=["credits"])
 
             user.total_token_used -= charge_amount
             user.save(update_fields=["total_token_used"])
+            print(f"DEBUG: Refunded {charge_amount} credits due to error.")
 
         return _error(str(e))
 
