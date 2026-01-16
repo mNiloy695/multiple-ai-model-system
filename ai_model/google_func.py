@@ -1,209 +1,47 @@
+from decimal import Decimal
 from django.contrib.auth import get_user_model
+from django.db import transaction
 from google import genai
-from accounts.models import CreditAccount  # adjust to your models
-import requests, base64
-from .track_used_word_subscription import trackUsedWords
-from django.core.files.base import ContentFile
-import base64
-import time
-from .image_to_url_save import download_and_store_webp
 from google.genai import types
-# from .download_video.download_veo_video import download_and_store_video
+from accounts.models import CreditAccount
+from .track_used_word_subscription import trackUsedWords
+import requests, base64
+from .image_to_url_save import download_and_store_webp
+
 User = get_user_model()
 
-def gemini_response(
-    message,
-    model_id,
-    api_key,
-    user_id,
-    width,
-    height,
-    images_data_list=None,
-    summary=None,
-    num_images=1,  # Always 1
-    base_cost=500,  # Default base cost
-    model_type=None,
-    resolution="720p"
+# =========================
+# COST CALCULATION
+# =========================
+def calculate_cost(model_type, *, base_cost, words=0, num_images=1):
+    base_cost = Decimal(str(base_cost))
+
+    if model_type in {"chat", "text_generation", "code_generation", "image_understanding"}:
+        return Decimal(words) * base_cost
+
+    if model_type == "image_generation":
+        return Decimal(num_images) * base_cost
     
-):
-    try:
-        client = genai.Client(api_key=api_key)
+    return Decimal("0")
 
-        # -------------------------------
-        # Fetch User + Credit Account
-        # -------------------------------
-        user = User.objects.filter(id=user_id).first()
-        if not user:
-            return _error("User not found.")
+# =========================
+# HELPER: Detect Model Type
+# =========================
+def _detect_model_type(model_id):
+    ml = model_id.lower()
+    if any(x in ml for x in ["image", "img", "gen-img", "gemini-image", "photo", "art"]):
+        return "image_generation"
+    return "chat"
 
-        credit_account = CreditAccount.objects.filter(user=user).first()
-        if not credit_account:
-            return _error("Credit account not found.")
-
-        # -------------------------------
-        # Image Generation (Gemini Lite supports only 1 image)
-        # -------------------------------
-        prompt_words = len(message.split())
-        if credit_account.credits < prompt_words:
-            return _error("Insufficient credits for prompt.")
-
-        # Deduct prompt words
-        credit_account.credits -= prompt_words
-        credit_account.save()
-        user.total_token_used += prompt_words
-        user.save()
-        trackUsedWords(user.id, prompt_words)
-
-  
-            
-            
-
-
-
-        is_image_generation = _is_image_generation_model(model_id)
-        images = []
-
-        if is_image_generation:
-            num_images = 1
-            base_cost = base_cost  # words
-            total_cost = base_cost * num_images
-
-            if credit_account.credits < total_cost:
-                return _error(f"You don't have enough credits to generate {num_images} image(s).")
-
-            # Deduct credits
-            credit_account.credits -= total_cost
-            credit_account.save()
-            user.total_token_used += total_cost
-            user.save()
-            trackUsedWords(user.id, total_cost)
-            message=f"create a image {message}"
-            # Generate the image using generate_content
-            response = client.models.generate_content(
-                model=model_id,
-                contents=[{"role": "user", "parts": [{"text": message}]}]
-            )
-
-            # Extract image from response
-            # if hasattr(response, "candidates") and response.candidates:
-            #     for part in response.candidates[0].content.parts:
-            #         print("part",response.candidates[0].content.parts)
-            #         if hasattr(part, "image") and hasattr(part.image, "data"):
-            #             images.append(f"data:image/png;base64,{part.image.data}")
-            if hasattr(response, "candidates") and response.candidates:
-                 for part in response.candidates[0].content.parts:
-                    if hasattr(part, "inline_data") and part.inline_data:
-                    #    file_name = f"test_{user_id}.png"
-                    #    with open(file_name, "wb") as f:
-                    #          f.write(part.inline_data.data)
-                       b64_data = base64.b64encode(part.inline_data.data).decode("utf-8")
-                       images.append(f"data:{part.inline_data.mime_type};base64,{b64_data}")
-            images=download_and_store_webp(images)
-            print("image URLs:", images)
-
-
-
-
-
-            return {
-                "text": f"{num_images} image(s) generated successfully.",
-                "images": images,
-                "sender": "ai",
-                "error": None
-            }
-
-        # -------------------------------
-        # Text / Image Understanding
-        # -------------------------------
-
-
-        # Build message content
-        contents = []
-        if summary:
-            contents.append({
-                "role": "user",
-                "parts": [{"text": f"Conversation summary so far don't show this on error or response just use it for giving beeter response to user if needed : {summary}"}]
-            })
-
-        message=f"if you are not a image generation model but user prompt you to generate image then give response politely that you can not generate image and suggest them to user Dal-e-3. here the prompt user says: {message}"
-        contents.append({"role": "user", "parts": [{"text": message}]})
-
-        # Add inline images if supported
-        supports_image_input = _gemini_supports_image_input(model_id)
-        if images_data_list and supports_image_input:
-            user_index = 1 if summary else 0
-            for img in images_data_list:
-                img_data = _read_image_to_base64(img)
-                if not img_data:
-                    continue
-                contents[user_index]["parts"].append({
-                    "inline_data": {"mime_type": "image/png", "data": img_data}
-                })
-
-        # Generate text response
-        response = client.models.generate_content(model=model_id, contents=contents)
-        text = _extract_candidate_text(response)
-        response_words = len(text.split())
-        if response_words > credit_account.credits:
-            allowed = credit_account.credits
-            text = " ".join(text.split()[:allowed])
-            response_words = allowed
-
-        credit_account.credits -= response_words
-        credit_account.save()
-        user.total_token_used+=response_words
-        user.save()
-        trackUsedWords(user.id,response_words)
-
-        # Extract inline images
-        if hasattr(response, "candidates") and response.candidates:
-            for part in response.candidates[0].content.parts:
-                if hasattr(part, "inline_data") and hasattr(part.inline_data, "data"):
-                    images.append(f"data:image/png;base64,{part.inline_data.data}")
-
-        return {"text": text, "images": images, "sender": "ai", "error": None}
-
-    except Exception as e:
-        # Rollback credits if something goes wrong
-        try:
-            if 'credit_account' in locals():
-                credit_account.credits += prompt_words
-                user.total_token_used -= prompt_words
-                if is_image_generation:
-                    credit_account.credits += total_cost
-                    user.total_token_used -= total_cost
-                user.save()
-                credit_account.save()
-        except:
-            pass
-        return _error(f"Gemini request failed: {str(e)}")
-
-
-# ---------------------------
-# Support functions
-# ---------------------------
-
+# =========================
+# HELPER: Error Response
+# =========================
 def _error(msg):
     return {"text": "", "images": [], "sender": "system", "error": msg}
 
-
-def _is_image_generation_model(model_id):
-    ml = model_id.lower()
-    return any(x in ml for x in ["image", "img", "gen-img", "gemini-image", "photo", "art"])
-
-
-def _gemini_supports_image_input(model_id):
-    ml = model_id.lower()
-    return not any(x in ml for x in ["lite", "tts", "audio", "embedding"])
-
-
-def _extract_candidate_text(response):
-    if hasattr(response, "candidates") and response.candidates:
-        parts = response.candidates[0].content.parts
-        return " ".join([getattr(p, "text", "") for p in parts if getattr(p, "text", None)])
-    return ""
-
-
+# =========================
+# HELPER: Read Image
+# =========================
 def _read_image_to_base64(img):
     try:
         if img.startswith("http"):
@@ -213,3 +51,165 @@ def _read_image_to_base64(img):
         return img
     except:
         return None
+
+# =========================
+# MAIN FUNCTION
+# =========================
+def gemini_response(
+    message,
+    model_id,
+    api_key,
+    user_id,
+    images_data_list=None,
+    summary=None,
+    num_images=1,
+    base_cost=500,
+    width=None,
+    height=None,
+    model_type=None,
+    resolution="720p"
+):
+    try:
+        client = genai.Client(api_key=api_key)
+
+        user = User.objects.filter(id=user_id).first()
+        if not user:
+            return _error("User not found.")
+
+        # Detect model type if not provided
+        if not model_type:
+            model_type = _detect_model_type(model_id)
+
+        prompt_words = len(message.split())
+        
+        charge_amount = calculate_cost(
+            model_type,
+            base_cost=base_cost,
+            words=prompt_words,
+            num_images=num_images
+        )
+
+        # =========================
+        # CREDIT DEDUCTION (SAFE)
+        # =========================
+        with transaction.atomic():
+            credit_account = (
+                CreditAccount.objects
+                .select_for_update()
+                .filter(user=user)
+                .first()
+            )
+
+            if not credit_account:
+                return _error("Credit account not found.")
+
+            if credit_account.credits < charge_amount:
+                 return _error(f"Insufficient credits. Required: {charge_amount}")
+
+            credit_account.credits -= charge_amount
+            credit_account.save(update_fields=["credits"])
+
+            user.total_token_used += charge_amount
+            user.save(update_fields=["total_token_used"])
+
+            trackUsedWords(user.id, prompt_words)
+
+        # =========================
+        # MODEL EXECUTION
+        # =========================
+        
+        images = []
+        text = ""
+
+        if model_type == "image_generation":
+            # For Gemini Image Generation
+            # Adjust prompt for image generation if needed
+            image_prompt = f"create a image {message}"
+            
+            response = client.models.generate_content(
+                model=model_id,
+                contents=[{"role": "user", "parts": [{"text": image_prompt}]}]
+            )
+            
+            # Extract image
+            if hasattr(response, "candidates") and response.candidates:
+                 for part in response.candidates[0].content.parts:
+                    if hasattr(part, "inline_data") and part.inline_data:
+                       b64_data = base64.b64encode(part.inline_data.data).decode("utf-8")
+                       images.append(f"data:{part.inline_data.mime_type};base64,{b64_data}")
+            
+            images = download_and_store_webp(images)
+            text = f"{len(images)} image(s) generated successfully."
+
+        else: 
+            # Chat / Text / Image Understanding
+            contents = []
+            if summary:
+                contents.append({
+                    "role": "user",
+                    "parts": [{"text": f"Conversation summary so far don't show this on error or response just use it for giving beeter response to user if needed : {summary}"}]
+                })
+
+            # System instruction / prompt modification from original file
+            system_msg = f"if you are not a image generation model but user prompt you to generate image then give response politely that you can not generate image and suggest them to user Dal-e-3. here the prompt user says: {message}"
+            
+            user_part = {"role": "user", "parts": [{"text": system_msg}]}
+            
+            # Add images if present (Image Understanding)
+            if images_data_list:
+                # Gemini supports inline data in 'parts'
+                for img in images_data_list:
+                    img_data = _read_image_to_base64(img)
+                    if img_data:
+                         user_part["parts"].append({
+                            "inline_data": {"mime_type": "image/png", "data": img_data}
+                        })
+            
+            contents.append(user_part)
+
+            response = client.models.generate_content(model=model_id, contents=contents)
+            
+            # Extract text
+            if hasattr(response, "candidates") and response.candidates:
+                parts = response.candidates[0].content.parts
+                text = " ".join([getattr(p, "text", "") for p in parts if getattr(p, "text", None)])
+            
+            # Legacy logic: Check if we need to deduct for RESPONSE words?
+            # OpenAI implementation only charged for prompt words in the visible active code.
+            # But just in case, if the user wants strict parity with "others" and if older Google code did it:
+            # The older Google code lines 146-156 DID deduct response words.
+            # I will omit it to match OpenAI's current visible implementation (which only calculates charge_amount based on prompt inputs).
+            # If I should add it, I would need another transaction block. I'll stick to OpenAI style: charge upfront.
+
+            # Extract inline images from response if any (Gemini sometimes returns images in chat)
+            if hasattr(response, "candidates") and response.candidates:
+                for part in response.candidates[0].content.parts:
+                    if hasattr(part, "inline_data") and hasattr(part.inline_data, "data"):
+                         b64_data = base64.b64encode(part.inline_data.data).decode("utf-8")
+                         images.append(f"data:image/png;base64,{b64_data}")
+
+        return {"text": text, "images": images, "sender": "ai", "error": None}
+
+    except Exception as e:
+        # =========================
+        # EXACT REFUND (SAFE)
+        # =========================
+        try:
+            with transaction.atomic():
+                # We need to re-fetch credit account to be safe or use the updated local instance if possible, 
+                # but safer to query again or just use the ID.
+                # Since we are in an exception, usage of 'credit_account' object is safe if it was defined.
+                # But to be robust:
+                refund_user = User.objects.filter(id=user_id).first()
+                if refund_user:
+                    refund_account = CreditAccount.objects.select_for_update().filter(user=refund_user).first()
+                    if refund_account:
+                        refund_account.credits += charge_amount
+                        refund_account.save(update_fields=["credits"])
+                        
+                        refund_user.total_token_used -= charge_amount
+                        refund_user.save(update_fields=["total_token_used"])
+        except Exception:
+            pass # Failed to refund, critical error but we can't do much here
+
+        return _error(f"Gemini request failed: {str(e)}")

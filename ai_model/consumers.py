@@ -271,7 +271,15 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 try:
                     
                     ai_response = await database_sync_to_async(gemini_response)(
-                        message_content, model_id, api_key, self.user.id,user_images,summary=session_data.get("summary",""),num_images=num_images,base_cost=base_cost,model_type=model_type
+                        message=message_content,
+                        model_id=model_id, 
+                        api_key=api_key, 
+                        user_id=self.user.id,
+                        images_data_list=user_images,
+                        summary=session_data.get("summary",""),
+                        num_images=num_images,
+                        base_cost=base_cost,
+                        model_type=model_type
                     )
                     if ai_response:
                         saved_ai_message = await self.save_message(

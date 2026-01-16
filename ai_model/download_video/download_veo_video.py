@@ -92,6 +92,7 @@ from google import genai
 from google.genai import types
 from django.conf import settings
 from django.contrib.auth import get_user_model
+import requests # Added requests import
 
 User = get_user_model()
 
@@ -201,17 +202,28 @@ def generate_veo3_preview_video(
         video_bytes = None
         
         # Check if video is base64 encoded
-        if hasattr(video_data.video, 'bytes_base64_encoded'):
+        if hasattr(video_data.video, 'bytes_base64_encoded') and video_data.video.bytes_base64_encoded:
             video_bytes = base64.b64decode(video_data.video.bytes_base64_encoded)
+        
+        # Check if video is a URI (regular URL)
+        elif hasattr(video_data.video, 'uri') and video_data.video.uri:
+            print(f"Video stored at URI: {video_data.video.uri}")
+            video_bytes = requests.get(video_data.video.uri).content
+
         # Check if video is stored in GCS
-        elif hasattr(video_data.video, 'gcs_uri'):
+        elif hasattr(video_data.video, 'gcs_uri') and video_data.video.gcs_uri:
             # If using GCS, download from the URI
             gcs_uri = video_data.video.gcs_uri
             print(f"Video stored in GCS: {gcs_uri}")
             # You would need to download from GCS here
             raise RuntimeError("GCS storage not implemented. Use base64 encoding instead.")
         else:
-            raise RuntimeError("Unsupported video storage format")
+            # Debugging info
+            debug_info = f"Video Data Dir: {dir(video_data)}"
+            if hasattr(video_data, 'video'):
+                debug_info += f", Video Attr Dir: {dir(video_data.video)}"
+            print(debug_info)
+            raise RuntimeError(f"Unsupported video storage format. Debug: {debug_info}")
 
         if not video_bytes:
             raise RuntimeError("Failed to extract video bytes")
@@ -233,8 +245,13 @@ def generate_veo3_preview_video(
         print(f"Video saved successfully: {video_path}")
 
         # Return media URL
-        media_url = f"{settings.MEDIA_URL}videos/{filename}"
-        return media_url
+        media_url = f"{settings.BASE_URL}{settings.MEDIA_URL}videos/{filename}"
+        
+        return {
+            "text": "Video generated successfully.",
+            "images": [media_url],
+            "type": "video"
+        }
 
     except ValueError as ve:
         # Re-raise ValueError with original message (credit issues)

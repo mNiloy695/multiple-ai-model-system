@@ -77,6 +77,10 @@ def wavespeed_ai_call(model_id, api_key, payload=None, poll_interval=0.5, user_i
 
         result = resp.json().get("data", {})
         status = result.get("status")
+        
+        if status not in ["completed", "failed"]:
+            time.sleep(poll_interval)
+
 
         if status == "completed":
             print(f"Task completed in seconds.")

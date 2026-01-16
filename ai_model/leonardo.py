@@ -12,7 +12,7 @@ def refresh_model_info(api_key):
     """
     url = "https://cloud.leonardo.ai/api/rest/v1/models"
     headers = {"Authorization": f"Bearer {api_key}"}
-    resp = requests.get(url, headers=headers)
+    resp = requests.get(url, headers=headers, timeout=30)
     resp.raise_for_status()
     models = resp.json().get("models", [])
     for m in models:
@@ -87,7 +87,7 @@ def leonardo_response(
             "modelId": model_id
         }
         headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
-        response = requests.post("https://cloud.leonardo.ai/api/rest/v1/generations", json=payload, headers=headers)
+        response = requests.post("https://cloud.leonardo.ai/api/rest/v1/generations", json=payload, headers=headers, timeout=60)
 
         if response.status_code != 200:
             # Refund credits if API fails
