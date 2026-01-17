@@ -78,11 +78,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
             return None
    
 
-    # @database_sync_to_async  
-    # def decrement_api_limit(self, user):
-    #    with transaction.atomic():
-    #      user.api_limit -= 1
-    #      user.save()
+
 
     @database_sync_to_async
     def decrement_api_limit(self, user_id):
@@ -169,9 +165,6 @@ class ChatConsumer(AsyncWebsocketConsumer):
             return 
         
 
-        # self.decrement_api_limit(self.user)
-        
-     
 
 
         message_content = data.get("message", "")
@@ -191,8 +184,6 @@ class ChatConsumer(AsyncWebsocketConsumer):
         fresh_user=await database_sync_to_async(User.objects.get)(id=self.user.id)
         self.user=fresh_user
         await self.decrement_api_limit(self.user)
-        # if ai_response:
-        #        await self.decrement_api_limit(self.user)
 
 
         if user_images:
@@ -333,15 +324,6 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
                         images = await sync_to_async(download_and_store_webp)(image_urls=images)
                         images = [img for img in images]
-                        # print(images)
-                        # if images:
-                        #     for img in images:
-                        #         png_bytes = base64.b64decode(img)
-                        #         image = Image.open(BytesIO(png_bytes))
-                        #         buffered = BytesIO()
-                        #         image.save(buffered, format="WEBP", quality=80)
-                        #         webp_b64 = base64.b64encode(buffered.getvalue()).decode()
-                        #         image_blocks.append(webp_b64)
                         saved_ai_message = await self.save_message(
                             self.session_id,
                             self.user,

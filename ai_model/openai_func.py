@@ -1,214 +1,3 @@
-# from django.contrib.auth import get_user_model
-# from accounts.models import CreditAccount
-# from openai import OpenAI
-# from .track_used_word_subscription import trackUsedWords
-# import base64
-# from .image_to_url_save import download_and_store_webp
-# User = get_user_model()
-
-# # Cache to avoid calling OpenAI every time
-# MODEL_CACHE = {}
-
-# def get_model_limits(model_name,client):
-    
-#     # Return cached limits
-#     if model_name in MODEL_CACHE:
-#         return MODEL_CACHE[model_name]
-
-#     try:
-#         model_info = client.models.retrieve(model_name)
-
-#         input_limit = model_info.capabilities.get("input_tokens", 16000)
-#         output_limit = model_info.capabilities.get("output_tokens", 4096)
-
-#         MODEL_CACHE[model_name] = {
-#             "input": input_limit,
-#             "output": output_limit
-#         }
-
-#         return MODEL_CACHE[model_name]
-
-#     except Exception:
-#         # fallback for unknown future models
-#         return {
-#             "input": 16000,
-#             "output": 4096
-#         }
-
-
-# def get_dynamic_max_tokens(model_name,client,requested_max):
-#     limits = get_model_limits(model_name,client=client)
-#     output_limit = limits["output"]
-
-#     # Clamp to the model's limit
-#     return min(requested_max, output_limit)
-
-# def gpt_response(
-#     message: str,
-#     model_id: str,
-#     api_key: str,
-#     user_id: int,
-#     images_data_list: list[str] | None = None,
-#     width=None,
-#     height=None,
-#     summary=None,
-#     audio_data: str | None = None,
-#     max_response_tokens: int = 0,
-#     num_images=1,
-#     base_cost=500,
-
-# ) -> dict:
-#     try:
-#         client = OpenAI(api_key=api_key)
-
-#         user = User.objects.filter(id=user_id).first()
-#         if not user:
-#             return _error("User not found.")
-
-#         credit_account = CreditAccount.objects.filter(user=user).first()
-#         if not credit_account:
-#             return _error("Credit account not found.")
-
-#         context_list=[]
-#         if summary:
-#             context_list.append(
-#                 {
-#         "role": "system",
-#         "content": f"Conversation summary so and listen don't show or response this summary to user just use this to track then context much better way here summary: {summary}"
-#                 }
-#             )
-#         prompt_words = len(message.split())
-#         prompt_words_cost=prompt_words*base_cost
-        
-
-#         context_list.append({
-#         "role": "user",
-#         "content": f'if you are not an image model and user say you to generate image and if you can not analize image but user say you for analize image just give them proper response that you can not do this .Here the prompt that user says to you: {message} follow it anyway'
-#         })
-
-        
-        
-#         if credit_account.credits < prompt_words_cost:
-#             return _error("Insufficient credits for prompt.")
-        
-
-         
-#         credit_account.credits -= prompt_words_cost
-#         credit_account.save()
-#         user.total_token_used+=prompt_words_cost
-#         user.save()
-#         trackUsedWords(user.id,prompt_words)
-
-#         # max_response_tokens = int(credit_account.credits * 1.33)
-
-#         # if max_response_tokens<=0:
-#         #     return _error(f"You don't have enough credit's to gate response")
-#         # print(max_response_tokens)
-#         max_response_tokens=4096
-#         max_response_tokens=get_dynamic_max_tokens(model_name=model_id,client=client,requested_max=max_response_tokens)
-#         print(max_response_tokens)
-        
-
-       
-
-        
-
-#         model_lower = model_id.lower()
-#         model_type = _detect_model_type(model_lower, images_data_list, audio_data)
-#         print(model_type)
-
-#         if model_type!="chat":
-        
-#             base_cost=base_cost #words
-#             num_images =1
-#             total_words=base_cost*num_images
-
-#             if total_words>credit_account.credits:
-#                 credit_account.credits+=prompt_words_cost
-#                 credit_account.save()
-                
-                   
-#                 return _error(f"You Don't have enought credits to generate image")
-#             credit_account.credits-=total_words
-#             credit_account.save()
-#             trackUsedWords(user.id,prompt_words)
-        
-            
-
-#         text, images = "", []
-
-        
-#         if model_type == "chat":
-#             text = _chat_request(client, model_id,context_list, max_response_tokens)
-
-#         elif model_type == "completion":
-#             text = _completion_request(client, model_id, context_list, max_response_tokens)
-
-#         elif model_type == "image_understanding":
-#             text = _vision_request(client, model_id, context_list, images_data_list, max_response_tokens)
-
-#         elif model_type == "image_generation":
-#             text, images = _image_request(client, model_id, context_list,width,
-#     height,num_images=num_images)
-
-#         elif model_type == "audio_generation":
-#             text = _audio_request(client, model_id, context_list, audio_data)
-
-#         elif model_type == "embedding":
-#             text = _embedding_request(client, model_id, context_list)
-
-#         elif model_type == "moderation":
-#             text = _moderation_request(client, model_id, context_list)
-
-#         else:
-#             return _error(f"Unsupported model type for '{model_id}'.")
-
-#         response_words = len(text.split())
-#         if (response_words*base_cost) > credit_account.credits:
-#             allowed = (credit_account.credits/base_cost) if credit_account!=0 else 0
-#             text = " ".join(text.split()[:allowed])
-#             response_words = allowed
-
-#         credit_account.credits -= response_words*base_cost
-#         credit_account.save()
-#         user.total_token_used+=response_words*base_cost
-#         user.save()
-
-#         trackUsedWords(user.id,response_words)
-
-#         return {"text": text, "images": images, "sender": "ai", "error": None}
-
-#     except Exception as e:
-
-#         try:
-#             if 'credit_account' in locals():
-#                 credit_account.credits += prompt_words
-#                 user.total_token_used-=prompt_words
-#                 if model_type=="image_generation":
-#                     total_cost=base_cost*num_images
-#                     credit_account.credits += total_cost
-#                     user.total_token_used-=total_cost
-#                 user.save()
-#                 credit_account.save()
-#         except Exception:
-#             pass
-
-    
-#         error_message = str(e)
-#         if "billing_hard_limit_reached" in error_message:
-#             error_message = "OpenAI billing limit reached for this account."
-#         elif "not allowed to sample" in error_message:
-#             error_message = "Selected model not available or unauthorized."
-#         elif "insufficient_quota" in error_message:
-#             error_message = "Your OpenAI quota has been exceeded."
-
-#         return _error(f"GPT request failed: {error_message}")
-
-
-
-
-#
-
 from decimal import Decimal
 from django.contrib.auth import get_user_model
 from django.db import transaction
@@ -220,12 +9,9 @@ from .track_used_word_subscription import trackUsedWords
 User = get_user_model()
 
 
-# =========================
-# COST CALCULATION
-# =========================
-# =========================
-# COST CALCULATION
-# =========================
+
+
+# Helper: Calculate costs based on model type
 def calculate_cost(model_type, *, base_cost, words=0, num_images=1, secounds=4, input_images_count=0):
     base_cost = Decimal(str(base_cost))
 
@@ -249,9 +35,7 @@ def calculate_cost(model_type, *, base_cost, words=0, num_images=1, secounds=4, 
     return Decimal(base_cost)
 
 import time
-# =========================
-# MAIN ENTRY
-# =========================
+
 def gpt_response(
     message: str,
     model_id: str,
@@ -275,12 +59,7 @@ def gpt_response(
     if not user:
         return _error("User not found")
 
-    model_type = _detect_model(
-        model_id.lower()
-    )
-
-
-    print("---------------model type--------------",model_type)
+    model_type = _detect_model(model_id.lower())
 
     prompt_words = len(message.split())
     input_images_count = len(images_data_list) if images_data_list else 0
@@ -294,22 +73,14 @@ def gpt_response(
         input_images_count=input_images_count
     )
 
-    # =========================
-    # CREDIT DEDUCTION (SAFE)
-    # =========================
+    # Deduct credits atomically
     with transaction.atomic():
-        credit_account = (
-            CreditAccount.objects
-            .select_for_update()
-            .filter(user=user)
-            .first()
-        )
-
+        credit_account = CreditAccount.objects.select_for_update().filter(user=user).first()
         if not credit_account:
             return _error("Credit account not found")
 
         if credit_account.credits < charge_amount:
-            return _error("Insufficient credits")
+            return _error(f"Insufficient credits. Required: {charge_amount}")
 
         credit_account.credits -= charge_amount
         credit_account.save(update_fields=["credits"])
@@ -318,20 +89,17 @@ def gpt_response(
         user.save(update_fields=["total_token_used"])
 
         trackUsedWords(user.id, prompt_words)
-        print(f"DEBUG: OpenAI Upfront deduction. BaseCost: {base_cost}, Words: {prompt_words}, Cost: {charge_amount}, New Balance: {credit_account.credits}")
         
-        # --- CALCULATE REMAINING CREDITS FOR OUTPUT ---
+        # Calculate remaining credits to determine max output
         remaining_credits = credit_account.credits
         
-        # Calculate how many words/tokens they can afford
         if base_cost > 0:
             max_response_words = int(remaining_credits / Decimal(str(base_cost)))
         else:
             max_response_words = 4096 
 
-        # If they can't afford any output, stop here
+        # If insufficient for any output, refund and exit
         if max_response_words < 1 and model_type in {"chat", "completion", "image_understanding"}:
-             # Refund prompt
              credit_account.credits += charge_amount
              credit_account.save(update_fields=["credits"])
              user.total_token_used -= charge_amount
@@ -342,9 +110,7 @@ def gpt_response(
         final_max_tokens = min(max_response_words, 4096)
 
     try:
-        # =========================
-        # MODEL EXECUTION
-        # =========================
+        # Execute the model request
         if model_type in {"chat", "completion", "image_understanding"}:
             messages = []
 
@@ -383,7 +149,7 @@ def gpt_response(
             text = res.choices[0].message.content.strip()
             # images = [] # Already init
 
-            # --- CHARGE FOR OUTPUT TOKENS ---
+            # Deduct the cost for generated text output
             if text:
                 response_words = len(text.split())
                 response_cost = calculate_cost(
@@ -392,10 +158,7 @@ def gpt_response(
                     words=response_words
                 )
                 
-                print(f"DEBUG: Output generated. Words: {response_words}, Cost: {response_cost}")
-
                 with transaction.atomic():
-                     # Re-fetch credit account to be safe
                      credit_account_updated = CreditAccount.objects.select_for_update().filter(user=user).first()
                      if credit_account_updated:
                         credit_account_updated.credits -= response_cost
@@ -405,7 +168,6 @@ def gpt_response(
                         user.save(update_fields=["total_token_used"])
                         
                         trackUsedWords(user.id, response_words)
-                        print(f"DEBUG: Output deduction success. Final Balance: {credit_account_updated.credits}")
 
         elif model_type == "image_generation":
             if f"{width}x{height}" not in ["1024x1024","1536x1024"]:
@@ -448,32 +210,13 @@ def gpt_response(
             text = str(res.results[0])
             # images = []
         elif model_type=="video_generation":
-            print("viddooooooooooooooooooooooooooooooooo")
-            if f"{width}x{height}" not in ["720x1280","1280x720"]:
-                width=720
-                height=1280
-
             job = client.videos.create(
-                model="sora-2", # Hardcoded or use model_id? user code used sora-2
+                model="sora-2", # user specified model
                 prompt=message or "Video generation", 
-                seconds=int(duration), # Ensure int
+                seconds=int(duration),
                 size=f"{width}x{height}"
                 )
-            
-            print(job)
-            # while True:
-            #     result = client.videos.retrieve(job.id)
-            #     if result.status == "completed":
-            #         print(result.output[0].url)
-            #         break
-            #     elif result.status=="in_progress":
-            #         print("the video is processing")
-            #         time.sleep(5)
-            #     elif result.status == "failed":
-            #         raise Exception("Video generation failed")
 
-            #     else:
-            #           print("Unknown video status:", result.status)
             text = f"Video generation started: {getattr(job, 'id', 'unknown')}"
             # No images/video URL yet if async?
             
@@ -485,24 +228,18 @@ def gpt_response(
         }
 
     except Exception as e:
-        # =========================
-        # EXACT REFUND (SAFE)
-        # =========================
-        print(f"DEBUG: CRITICAL ERROR causing Refund: {str(e)}")
+        # Refund on failure
         with transaction.atomic():
             credit_account.credits += charge_amount
             credit_account.save(update_fields=["credits"])
 
             user.total_token_used -= charge_amount
             user.save(update_fields=["total_token_used"])
-            print(f"DEBUG: Refunded {charge_amount} credits due to error.")
 
         return _error(str(e))
 
 
-# =========================
-# HELPERS
-# =========================
+# Helpers
 def _error(msg: str) -> dict:
     return {
         "text": "",

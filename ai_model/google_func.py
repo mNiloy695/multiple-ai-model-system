@@ -115,7 +115,7 @@ def gemini_response(
             user.total_token_used += charge_amount
             trackUsedWords(user.id, prompt_words)
             
-            print(f"DEBUG: Google Upfront deduction. BaseCost: {base_cost}, Words: {prompt_words}, Cost: {charge_amount}, New Balance: {credit_account.credits}")
+
 
             # --- CALCULATE REMAINING CREDITS FOR OUTPUT ---
             remaining_credits = credit_account.credits
@@ -217,7 +217,7 @@ def gemini_response(
                 response_words = len(text.split())
                 response_cost = calculate_cost( model_type, base_cost=base_cost, words=response_words)
                 
-                print(f"DEBUG: Output generated. Words: {response_words}, Cost: {response_cost}")
+
 
                 with transaction.atomic():
                     credit_account = CreditAccount.objects.select_for_update().filter(user=user).first()
@@ -229,7 +229,7 @@ def gemini_response(
                         user.save(update_fields=["total_token_used"])
                         
                         trackUsedWords(user.id, response_words)
-                        print(f"DEBUG: Output deduction success. Final Balance: {credit_account.credits}")
+
 
 
             # Extract inline images from response if any (Gemini sometimes returns images in chat)
@@ -244,9 +244,9 @@ def gemini_response(
         if images:
             try:
                 images = download_and_store_webp(images)
-            except Exception as img_err:
-                print(f"DEBUG: Image processing failed: {img_err}")
+            except Exception:
                 # Do NOT fail the request, just return empty images or whatever worked
+                pass
 
         return {"text": text, "images": images, "sender": "ai", "error": None}
 
@@ -254,7 +254,7 @@ def gemini_response(
         # =========================
         # EXACT REFUND (SAFE)
         # =========================
-        print(f"DEBUG: CRITICAL ERROR causing Refund: {str(e)}")
+
         try:
             with transaction.atomic():
                 refund_user = User.objects.filter(id=user_id).first()
@@ -266,8 +266,9 @@ def gemini_response(
                         
                         refund_user.total_token_used -= charge_amount
                         refund_user.save(update_fields=["total_token_used"])
-                        print(f"DEBUG: Refunded {charge_amount} credits due to error.")
-        except Exception as refund_err:
-            print(f"DEBUG: Refund FAILED: {refund_err}")
+
+        except Exception:
+            pass
+
 
         return _error(f"Gemini request failed: {str(e)}")
