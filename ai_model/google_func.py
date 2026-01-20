@@ -1,26 +1,37 @@
 from decimal import Decimal
+import asyncio
+import time
+import requests
+import base64
 from django.contrib.auth import get_user_model
 from django.db import transaction
 from google import genai
 from google.genai import types
+from asgiref.sync import sync_to_async
+
 from accounts.models import CreditAccount
 from .track_used_word_subscription import trackUsedWords
-import requests, base64
 from .image_to_url_save import download_and_store_webp
 
+import math
 User = get_user_model()
 
 # =========================
-# COST CALCULATION
+# HELPER: Count Words (1 word = 5 non-space chars)
 # =========================
+def count_words(text):
+    if not text:
+        return 0
+    # Remove spaces and calculate ceil(len/5)
+    char_count = len(text.replace(" ", ""))
+    return math.ceil(char_count / 5)
 def calculate_cost(model_type, *, base_cost, words=0, num_images=1, input_images_count=0):
     base_cost = Decimal(str(base_cost))
 
     if model_type in {"chat", "text_generation", "code_generation", "image_understanding"}:
-        # Charge for words + input images (flat fee per input image)
         return (Decimal(words) * base_cost) + (Decimal(input_images_count) * base_cost)
 
-    if model_type == "image_generation":
+    if model_type == "image_generation" or model_type == "text_to_image":
         return Decimal(num_images) * base_cost
     
     return Decimal(base_cost)
@@ -30,8 +41,8 @@ def calculate_cost(model_type, *, base_cost, words=0, num_images=1, input_images
 # =========================
 def _detect_model_type(model_id):
     ml = model_id.lower()
-    if any(x in ml for x in ["image", "img", "gen-img", "gemini-image", "photo", "art"]):
-        return "image_generation"
+    if any(x in ml for x in ["image", "img", "gen", "photo", "art", "text_to_image"]):
+        return "text_to_image"
     return "chat"
 
 # =========================
@@ -43,20 +54,20 @@ def _error(msg):
 # =========================
 # HELPER: Read Image
 # =========================
-def _read_image_to_base64(img):
+async def _read_image_to_base64_async(img):
     try:
         if img.startswith("http"):
-            resp = requests.get(img)
+            resp = await sync_to_async(requests.get)(img, timeout=30)
             resp.raise_for_status()
             return base64.b64encode(resp.content).decode("utf-8")
         return img
-    except:
+    except Exception:
         return None
 
 # =========================
 # MAIN FUNCTION
 # =========================
-def gemini_response(
+async def gemini_response(
     message,
     model_id,
     api_key,
@@ -73,15 +84,16 @@ def gemini_response(
     try:
         client = genai.Client(api_key=api_key)
 
-        user = User.objects.filter(id=user_id).first()
+        user = await sync_to_async(lambda: User.objects.filter(id=user_id).first())()
         if not user:
             return _error("User not found.")
 
-        # Detect model type if not provided
         if not model_type:
             model_type = _detect_model_type(model_id)
 
-        prompt_words = len(message.split())
+        num_images = 1 # Force 1 image per request
+        
+        prompt_words = count_words(message)
         input_images_count = len(images_data_list) if images_data_list else 0
         
         charge_amount = calculate_cost(
@@ -92,197 +104,150 @@ def gemini_response(
             input_images_count=input_images_count
         )
 
-        # =========================
-        # CREDIT DEDUCTION (SAFE)
-        # =========================
-        with transaction.atomic():
-            credit_account = (
-                CreditAccount.objects
-                .select_for_update()
-                .filter(user=user)
-                .first()
-            )
+        # Credit Deduction (Atomic)
+        @sync_to_async
+        def _deduct_credits_atomic():
+            with transaction.atomic():
+                acc = CreditAccount.objects.select_for_update().filter(user_id=user_id).first()
+                if not acc: 
+                    print(f"DEBUG: Credit account NOT FOUND for user_id {user_id}")
+                    return None, 0
+                
+                print(f"DEBUG: Gemini Pre-deduction. User: {user_id}, Current: {acc.credits}, Charging: {charge_amount}")
+                if acc.credits < charge_amount: 
+                    return False, acc.credits
+                
+                acc.credits -= charge_amount
+                acc.save(update_fields=["credits"])
+                
+                u = User.objects.get(id=user_id)
+                u.total_token_used += charge_amount
+                u.save(update_fields=["total_token_used"])
+                
+                # Only track words for character models
+                if model_type in {"chat", "text_generation", "code_generation", "image_understanding"}:
+                    trackUsedWords(user_id, prompt_words)
+                
+                print(f"DEBUG: Gemini Deduction SUCCESS. New Balance: {acc.credits}")
+                return True, acc.credits
 
-            if not credit_account:
-                return _error("Credit account not found.")
+        success, current_credits = await _deduct_credits_atomic()
+        if success is None: return _error("Credit account not found.")
+        if success is False: return _error(f"Insufficient credits. Required: {charge_amount}")
 
-            if credit_account.credits < charge_amount:
-                 return _error(f"Insufficient credits. Required: {charge_amount}")
+        # Max Output Token Logic
+        remaining_credits = current_credits
+        if base_cost > 0:
+            max_response_words = int(remaining_credits / Decimal(str(base_cost)))
+        else:
+            max_response_words = 8192
 
-            credit_account.credits -= charge_amount
-            credit_account.save(update_fields=["credits"])
-
-            user.total_token_used += charge_amount
-            trackUsedWords(user.id, prompt_words)
-            
-
-
-            # --- CALCULATE REMAINING CREDITS FOR OUTPUT ---
-            remaining_credits = credit_account.credits
-            
-            # Calculate how many words/tokens they can afford
-            if base_cost > 0:
-                max_response_words = int(remaining_credits / Decimal(str(base_cost)))
-            else:
-                max_response_words = 8192
-
-            # If they can't afford any output, stop here
-            if max_response_words < 1 and model_type in {"chat", "text_generation", "code_generation"}:
-                 # Refund prompt
-                 credit_account.credits += charge_amount
-                 credit_account.save(update_fields=["credits"])
-                 user.total_token_used -= charge_amount
-                 user.save(update_fields=["total_token_used"])
-                 return _error("Insufficient credits for response.")
-            
-            # Cap at safe limit (Gemini supports up to 8k or more depending on version)
-            final_max_tokens = min(max_response_words, 8192)
-
-        # =========================
-        # MODEL EXECUTION
-        # =========================
+        if max_response_words < 1 and model_type in {"chat", "text_generation", "code_generation"}:
+            @sync_to_async
+            def _refund():
+                 with transaction.atomic():
+                     acc = CreditAccount.objects.select_for_update().filter(user=user).first()
+                     acc.credits += charge_amount
+                     acc.save(update_fields=["credits"])
+                     u = User.objects.get(id=user_id)
+                     u.total_token_used -= charge_amount
+                     u.save(update_fields=["total_token_used"])
+            await _refund()
+            return _error("Insufficient credits for response.")
         
+        final_max_tokens = min(max_response_words, 8192)
+
         images = []
         text = ""
 
-        if model_type == "image_generation":
-            # For Gemini Image Generation
-            # Adjust prompt for image generation if needed
-            image_prompt = f"create a image {message}"
-            
-            response = client.models.generate_content(
-                model=model_id,
-                contents=[{"role": "user", "parts": [{"text": image_prompt}]}]
-            )
-            
-            # Extract image
-            if hasattr(response, "candidates") and response.candidates:
-                 for candidate in response.candidates:
-                     if hasattr(candidate.content, "parts"):
-                         for part in candidate.content.parts:
-                            # Check for regular inline_data (common in gemini-1.5-flash)
+        if model_type == "text_to_image" or model_type == "image_generation":
+            if "imagen" in model_id.lower():
+                response = await sync_to_async(client.models.generate_image)(
+                    model=model_id,
+                    prompt=message,
+                    config=types.GenerateImageConfig(number_of_images=num_images)
+                )
+                if hasattr(response, "generated_images") and response.generated_images:
+                    for gen_img in response.generated_images:
+                        b64_data = base64.b64encode(gen_img.image.data).decode("utf-8")
+                        images.append(f"data:image/png;base64,{b64_data}")
+            else:
+                image_prompt = f"Role: Professional Image Generator. Task: Create an image: {message}"
+                response = await sync_to_async(client.models.generate_content)(
+                    model=model_id,
+                    contents=[{"role": "user", "parts": [{"text": image_prompt}]}]
+                )
+                if hasattr(response, "candidates") and response.candidates:
+                    for candidate in response.candidates:
+                        for part in candidate.content.parts:
                             if hasattr(part, "inline_data") and part.inline_data:
-                               b64_data = base64.b64encode(part.inline_data.data).decode("utf-8")
-                               mime_type = part.inline_data.mime_type or "image/png"
-                               images.append(f"data:{mime_type};base64,{b64_data}")
-            
-            # images conversion is now handled at the end
-            text = f"{len(images)} image(s) generated successfully."
+                                b64_data = base64.b64encode(part.inline_data.data).decode("utf-8")
+                                images.append(f"data:image/png;base64,{b64_data}")
+                            elif hasattr(part, "text") and part.text:
+                                text += part.text + " "
+
+            if not images and text: pass
+            elif images: text = f"{len(images)} image(s) generated successfully."
+            else: text = "Failed to generate images."
 
         else: 
-            # Chat / Text / Image Understanding
-            contents = []
-            # Add a base system prompt for language and behavior
-            contents.append({
-                "role": "user", # Gemini uses 'user' role for system instructions in multi-turn
-                "parts": [{"text": "You are a helpful assistant. Please respond in English by default, unless the user explicitly asks in another language or the context requires it."}]
-            })
-
-            if summary:
-                contents.append({
-                    "role": "user", # Gemini uses 'user' role for system instructions in multi-turn
-                    "parts": [{"text": f"Conversation summary so far: {summary}. Do not show this summary in your response, use it for context."}]
-                })
-
-            # Add image generation behavior instruction as a separate context item
-            contents.append({
-                "role": "user",
-                "parts": [{"text": "If you are not an image generation model but the user prompts you to generate an image, politely explain that you cannot generate images directly and suggest they use DALL-E 3 instead."}]
-            })
+            contents = [{"role": "user", "parts": [{"text": "You are a helpful assistant. Please respond in English."}]}]
+            if summary: contents.append({"role": "user", "parts": [{"text": f"Context: {summary}"}]})
             
             user_part = {"role": "user", "parts": [{"text": message}]}
-            
-            # Add images if present (Image Understanding)
             if images_data_list:
-                # Gemini supports inline data in 'parts'
                 for img in images_data_list:
-                    img_data = _read_image_to_base64(img)
+                    img_data = await _read_image_to_base64_async(img)
                     if img_data:
-                         user_part["parts"].append({
-                            "inline_data": {"mime_type": "image/png", "data": img_data}
-                        })
-            
+                         user_part["parts"].append({"inline_data": {"mime_type": "image/png", "data": img_data}})
             contents.append(user_part)
 
-            # --- LIMIT OUTPUT TOKENS ---
-            config = types.GenerateContentConfig(
-                max_output_tokens=final_max_tokens
-            )
-
-            response = client.models.generate_content(
-                model=model_id, 
-                contents=contents,
-                config=config 
-            )
+            config = types.GenerateContentConfig(max_output_tokens=final_max_tokens)
+            response = await sync_to_async(client.models.generate_content)(model=model_id, contents=contents, config=config)
             
-            # Extract text
             if hasattr(response, "candidates") and response.candidates:
                 parts = response.candidates[0].content.parts
                 text = " ".join([getattr(p, "text", "") for p in parts if getattr(p, "text", None)])
-            
-            # --- CHARGE FOR OUTPUT TOKENS ---
-            # Only charge for text/chat models. Image generation is pre-paid.
-            if text and model_type in {"chat", "text_generation", "code_generation", "image_understanding"}:
-                response_words = len(text.split())
-                response_cost = calculate_cost( model_type, base_cost=base_cost, words=response_words)
                 
-
-
-                with transaction.atomic():
-                    credit_account = CreditAccount.objects.select_for_update().filter(user=user).first()
-                    if credit_account:
-                        credit_account.credits -= response_cost
-                        credit_account.save(update_fields=["credits"])
-                        
-                        user.total_token_used += response_cost
-                        user.save(update_fields=["total_token_used"])
-                        
-                        trackUsedWords(user.id, response_words)
-
-
-
-            # Extract inline images from response if any (Gemini sometimes returns images in chat)
-            if hasattr(response, "candidates") and response.candidates:
-                for part in response.candidates[0].content.parts:
+                # Charge for output
+                if text and model_type in {"chat", "text_generation", "code_generation", "image_understanding"}:
+                    resp_words = count_words(text)
+                    resp_cost = calculate_cost(model_type, base_cost=base_cost, words=resp_words)
+                    @sync_to_async
+                    def _charge_output():
+                        with transaction.atomic():
+                            acc = CreditAccount.objects.select_for_update().filter(user=user).first()
+                            acc.credits -= resp_cost
+                            acc.save(update_fields=["credits"])
+                            u = User.objects.get(id=user_id)
+                            u.total_token_used += resp_cost
+                            u.save(update_fields=["total_token_used"])
+                    await _charge_output()
+                
+                # Check for inline images
+                for part in parts:
                     if hasattr(part, "inline_data") and hasattr(part.inline_data, "data"):
                          b64_data = base64.b64encode(part.inline_data.data).decode("utf-8")
                          images.append(f"data:image/png;base64,{b64_data}")
 
-        # Convert simple Base64 images to stored URLs for ALL model types
-        # This handles both explicit image_generation and chat models returning images (like Flash)
         if images:
-            try:
-                images = download_and_store_webp(images)
-            except Exception:
-                # Do NOT fail the request, just return empty images or whatever worked
-                pass
+            images = await sync_to_async(download_and_store_webp)(images)
 
         return {"text": text, "images": images, "sender": "ai", "error": None}
 
     except Exception as e:
-        # =========================
-        # EXACT REFUND (SAFE)
-        # =========================
-        error_str = str(e)
-        print(f"ERROR in gemini_response: {error_str}")
-
-        try:
-            with transaction.atomic():
-                refund_user = User.objects.filter(id=user_id).first()
-                if refund_user:
-                    refund_account = CreditAccount.objects.select_for_update().filter(user=refund_user).first()
-                    if refund_account:
-                        refund_account.credits += charge_amount
-                        refund_account.save(update_fields=["credits"])
-                        
-                        refund_user.total_token_used -= charge_amount
-                        refund_user.save(update_fields=["total_token_used"])
-
-        except Exception:
-            pass
-
-        # Sanitize error message for user
-        if "api_key" in error_str.lower() or "api key" in error_str.lower() or "key" in error_str.lower():
-             return _error("Authentication failed: Invalid API key or configuration.")
-
-        return _error(f"Request failed. Please try again later.")
+        print(f"ERROR in gemini_response: {e}")
+        # Refund sync
+        @sync_to_async
+        def _final_refund():
+            try:
+                with transaction.atomic():
+                    u = User.objects.filter(id=user_id).first()
+                    acc = CreditAccount.objects.filter(user=u).first()
+                    acc.credits += charge_amount
+                    acc.save(update_fields=["credits"])
+                    u.total_token_used -= charge_amount
+                    u.save(update_fields=["total_token_used"])
+            except: pass
+        await _final_refund()
+        return _error("Request failed. Please try again later.")

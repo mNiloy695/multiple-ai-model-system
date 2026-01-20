@@ -5,7 +5,17 @@ from django.db import transaction
 from .track_used_word_subscription import trackUsedWords
 from decimal import Decimal
 
+import math
 User = get_user_model()
+
+# =========================
+# HELPER: Count Words (1 word = 5 non-space chars)
+# =========================
+def count_words(text):
+    if not text:
+        return 0
+    char_count = len(text.replace(" ", ""))
+    return math.ceil(char_count / 5)
 
 # =========================
 # HELPER: Error Response
@@ -47,7 +57,7 @@ def call_deepseek_for_chat(
             return _error("User not found")
 
         # 2. Calculate Cost (Upfront for prompt)
-        prompt_words = len(message.split())
+        prompt_words = count_words(message)
         charge_amount = calculate_cost(base_cost, prompt_words)
 
         # 3. Credit Check & Deduction (Atomic)
@@ -55,7 +65,7 @@ def call_deepseek_for_chat(
             credit_account = (
                 CreditAccount.objects
                 .select_for_update()
-                .filter(user=user)
+                .filter(user_id=user_id)
                 .first()
             )
 
@@ -128,14 +138,14 @@ def call_deepseek_for_chat(
             reply_text = response.choices[0].message.content
             
             # --- CHARGE FOR OUTPUT TOKENS ---
-            response_words = len(reply_text.split())
+            response_words = count_words(reply_text)
             response_cost = calculate_cost(base_cost, response_words)
             
             print(f"DEBUG: DeepSeek Output generated. Words: {response_words}, Cost: {response_cost}")
 
             # Atomic transaction for response cost
             with transaction.atomic():
-                credit_account = CreditAccount.objects.select_for_update().filter(user=user).first()
+                credit_account = CreditAccount.objects.select_for_update().filter(user_id=user_id).first()
                 if credit_account:
                     # Check if they went negative (optional policy: allow small debt or cut off?)
                     # Here we just deduct, potentially going negative if they ran out mid-stream,
@@ -163,7 +173,7 @@ def call_deepseek_for_chat(
             with transaction.atomic():
                 # Re-fetch logic or use updated objects
                 # Note: 'credit_account' object is stale, re-fetching is safer or just incrementing
-                refund_account = CreditAccount.objects.select_for_update().filter(user=user).first()
+                refund_account = CreditAccount.objects.select_for_update().filter(user_id=user_id).first()
                 if refund_account:
                     refund_account.credits += charge_amount
                     refund_account.save(update_fields=["credits"])

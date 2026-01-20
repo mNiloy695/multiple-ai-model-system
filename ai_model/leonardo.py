@@ -2,6 +2,14 @@ import requests
 from accounts.models import CreditAccount, User
 from .track_used_word_subscription import trackUsedWords
 from .image_to_url_save import download_and_store_webp  # your existing function
+import math
+
+# Helper: Count Words (1 word = 5 non-space chars)
+def count_words(text):
+    if not text:
+        return 0
+    char_count = len(text.replace(" ", ""))
+    return math.ceil(char_count / 5)
 
 # Cache for model_id → allowed_resolutions
 MODEL_INFO_CACHE = {}
@@ -74,10 +82,9 @@ def leonardo_response(
         
         credit_account.credits -= total_cost
         credit_account.save()
-        prompt_words = len(prompt.split())
-        user.total_token_used += prompt_words
+        # Non-char models (image) don't track prompt words cost/usage
+        user.total_token_used += total_cost # Track by cost instead
         user.save()
-        trackUsedWords(user.id, prompt_words)
 
         payload = {
             "prompt": prompt,

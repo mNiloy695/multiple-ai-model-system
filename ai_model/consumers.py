@@ -91,8 +91,11 @@ class ChatConsumer(AsyncWebsocketConsumer):
     @database_sync_to_async
     def get_remaining_credits(self, user):
         from accounts.models import CreditAccount
-        acc = CreditAccount.objects.filter(user=user).first()
-        return float(acc.credits) if acc else 0.0
+        # Use user_id for more robust querying across threads
+        acc = CreditAccount.objects.filter(user_id=user.id).first()
+        res = float(acc.credits) if acc else 0.0
+        print(f"DEBUG: Fetched remaining credits for user {user.id}: {res}")
+        return res
 
     async def send_json_with_credits(self, data):
         """Helper to send JSON response including current remaining credits."""
@@ -203,8 +206,6 @@ class ChatConsumer(AsyncWebsocketConsumer):
             if len(message_content_words)>400:
                 message_content=str(message_content[:400])
         
-        fresh_user=await database_sync_to_async(User.objects.get)(id=self.user.id)
-        self.user=fresh_user
         await self.decrement_api_limit(self.user)
 
 
@@ -274,7 +275,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
             if model_type=="text_to_video":
                 try:
-                    ai_response=await database_sync_to_async(generate_veo3_preview_video)(api_key=api_key, prompt=message_content, aspect_ratio=aspect_ratio, model_id=model_id, resolution=resolution,user_id=self.user.id,base_cost=base_cost)
+                    ai_response = await generate_veo3_preview_video(api_key=api_key, prompt=message_content, aspect_ratio=aspect_ratio, model_id=model_id, resolution=resolution,user_id=self.user.id,base_cost=base_cost)
                     
 
                     if ai_response:
@@ -296,7 +297,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
             else:
                 try:
                     
-                    ai_response = await database_sync_to_async(gemini_response)(
+                    ai_response = await gemini_response(
                         message=message_content,
                         model_id=model_id, 
                         api_key=api_key, 
@@ -340,13 +341,30 @@ class ChatConsumer(AsyncWebsocketConsumer):
             if not self.user.subscribed:
                 await self.send(json.dumps({"type":"error","message":"Only free model is available for free users. Please upgrade to access premium models."}))
                 return
-
+            
             if model_id and api_key:
+
                 try:
                     base_cost=getattr(model,"base_cost",0)
                     if not base_cost or base_cost <= 0:
                         base_cost = 500
-                    ai_response = await database_sync_to_async(gpt_response)(message=message_content,model_id=model_id,api_key=api_key,user_id=self.user.id,images_data_list=user_images,summary=session_data.get("summary"),num_images=num_images,base_cost=base_cost,duration=duration,height=height,width=width,aspect_ratio=aspect_ratio)
+
+                    seed = data.get("seed", -1)
+                    if model_type=="text_to_video" or model_type=="image_to_video" or model_type=="text_or_image_to_video":
+                        from .openai_video.openai_video import call_openai_video_model
+                        ai_response = await call_openai_video_model(
+                            model_id=model_id,
+                            api_key=api_key,
+                            user_id=self.user.id,
+                            prompt=message_content,
+                            duration=duration,
+                            width=width,
+                            height=height,
+                            seed=seed,
+                            base_cost=base_cost
+                        )
+                    else:
+                        ai_response = await gpt_response(message=message_content,model_id=model_id,api_key=api_key,user_id=self.user.id,images_data_list=user_images,summary=session_data.get("summary"),num_images=num_images,base_cost=base_cost,duration=duration,height=height,width=width,aspect_ratio=aspect_ratio)
 
                     
                     if ai_response:
@@ -483,7 +501,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                                               
                   try:
                      
-                    ai_response=await database_sync_to_async(wavespeed_ai_call)(
+                    ai_response = await wavespeed_ai_call(
                         model_id=model_id,
                         api_key=api_key,
                         payload=payload,
@@ -514,7 +532,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 #text to video generation
                 elif model_type=="text_to_video":
                     try:
-                        ai_response=await database_sync_to_async(text_to_video_generation)(
+                        ai_response = await text_to_video_generation(
                             model_id=model_id,
                             prompt=prompt,
                             api_key=api_key,
