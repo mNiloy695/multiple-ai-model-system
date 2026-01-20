@@ -25,6 +25,15 @@ def download_and_store_webp(image_urls):
 
             # Handle normal URL
             elif url.startswith("http://") or url.startswith("https://"):
+                # Detect if URL is already local to avoid loopback errors
+                is_local = any(x in url for x in ["127.0.0.1", "localhost", "0.0.0.0"])
+                if settings.BASE_URL and settings.BASE_URL in url:
+                    is_local = True
+                
+                if is_local and ("/media/" in url):
+                    saved_urls.append(url)
+                    continue
+
                 response = requests.get(url, timeout=30)
                 if response.status_code != 200:
                     saved_urls.append(None)
@@ -58,6 +67,58 @@ def download_and_store_webp(image_urls):
 
         except Exception as e:
             print("Error processing URL/Base64:", url, e)
+            saved_urls.append(None)
+
+    return saved_urls
+
+
+def download_and_store_video(video_urls):
+    """
+    Downloads a list of video URLs, saves in MEDIA/videos folder,
+    and returns a list of saved media URLs.
+    """
+    if isinstance(video_urls, str):
+        video_urls = [video_urls]
+        
+    saved_urls = []
+    save_dir = os.path.join(settings.MEDIA_ROOT, "videos")
+    os.makedirs(save_dir, exist_ok=True)
+
+    for url in video_urls:
+        if not url:
+            saved_urls.append(None)
+            continue
+            
+        try:
+            if url.startswith("http://") or url.startswith("https://"):
+                # Detect if URL is already local to avoid loopback errors
+                is_local = any(x in url for x in ["127.0.0.1", "localhost", "0.0.0.0"])
+                if settings.BASE_URL and settings.BASE_URL in url:
+                    is_local = True
+
+                if is_local and ("/media/" in url):
+                    saved_urls.append(url)
+                    continue
+                    
+                response = requests.get(url, timeout=120)  # Video can be large
+                if response.status_code != 200:
+                    saved_urls.append(None)
+                    continue
+                video_data = response.content
+            else:
+                saved_urls.append(None)
+                continue
+
+            # Save video
+            file_name = f"{uuid.uuid4()}.mp4"
+            file_path = os.path.join(save_dir, file_name)
+            with open(file_path, "wb") as f:
+                f.write(video_data)
+
+            saved_urls.append(f"{settings.BASE_URL}{settings.MEDIA_URL}videos/{file_name}")
+
+        except Exception as e:
+            print("Error processing video URL:", url, e)
             saved_urls.append(None)
 
     return saved_urls

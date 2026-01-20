@@ -13,7 +13,7 @@ services:
     volumes:
       - .:/app
     ports:
-      - "8081:8000"
+      - "10.10.13.75:8082:8000"
     env_file:
       - .env
     depends_on:

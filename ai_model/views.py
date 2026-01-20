@@ -132,3 +132,6 @@ class ChatSessionView(viewsets.ModelViewSet):
     #     model=AIModelInfo.objects.filter(model_id=model_id).first()
     #     serializer.save(model=model,user=self.request.user)
 
+
+
+

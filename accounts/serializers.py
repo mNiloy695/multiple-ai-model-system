@@ -147,3 +147,11 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
         
 
+
+
+from .models import CreditAccount
+
+class CreditAccountSerializer(serializers.ModelSerializer):
+    class Meta:
+        model=CreditAccount
+        fields=['id','user','credits']

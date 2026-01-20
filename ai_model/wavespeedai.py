@@ -59,11 +59,14 @@ def wavespeed_ai_call(model_id, api_key, payload=None, poll_interval=0.5, user_i
         response = requests.post(url, headers=headers, data=json.dumps(payload))
         response.raise_for_status()
     except requests.RequestException as e:
-        return {"error": f"Error submitting {model_id}: {str(e)}"}
+        error_str = str(e)
+        if "api_key" in error_str.lower() or "authorization" in error_str.lower():
+            return {"error": "Authentication failed: Invalid API key."}
+        return {"error": f"Error submitting request. Please try again later."}
 
     request_id = response.json().get("data", {}).get("id")
     if not request_id:
-        return {"error": f"No request ID returned for {model_id}"}
+        return {"error": f"No request ID returned"}
 
     result_url = f"https://api.wavespeed.ai/api/v3/predictions/{request_id}/result"
     start_time = time.time()
@@ -99,7 +102,7 @@ def wavespeed_ai_call(model_id, api_key, payload=None, poll_interval=0.5, user_i
 
         elif status == "failed":
             print("hurrah faild")
-            return {"error": result.get("error", f"{model_id} generation failed")}
+            return {"error": result.get("error", "Generation failed")}
 
       
 

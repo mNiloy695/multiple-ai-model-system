@@ -14,6 +14,7 @@ class InvoiceModel(models.Model):
     date=models.DateTimeField(auto_now_add=True)
     payment_status=models.CharField(choices=STATUS,max_length=6,default="paid")
     amount=models.DecimalField(max_digits=10,decimal_places=2)
+    words=models.BigIntegerField(default=0,null=True,blank=True)
     created_at=models.DateTimeField(auto_now_add=True)
     updated_at=models.DateTimeField(auto_now=True)
 

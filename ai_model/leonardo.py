@@ -113,4 +113,7 @@ def leonardo_response(
         if 'credit_account' in locals():
             credit_account.credits += total_cost
             credit_account.save()
-        return {"images": [], "error": f"Unexpected error: {str(e)}", "sender": "system"}
+        error_str = str(e)
+        if "api" in error_str.lower() or "key" in error_str.lower():
+            return {"images": [], "error": "Authentication failed: Invalid API key.", "sender": "system"}
+        return {"images": [], "error": "Unexpected error occurred. Please try again later.", "sender": "system"}

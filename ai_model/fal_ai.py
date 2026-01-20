@@ -65,4 +65,7 @@ def call_fal_ai(api_key, prompt,model,user_id,num_images=1,base_cost=None,seed=6
         credit_account.save()
         user.total_token_used-=image_deduct_credit
         user.save()
-        return {"error": f"Error generating image: {str(e)}"}
+        error_str = str(e)
+        if "key" in error_str.lower():
+            return {"error": "Authentication failed: Invalid API key."}
+        return {"error": "Error generating image. Please try again later."}

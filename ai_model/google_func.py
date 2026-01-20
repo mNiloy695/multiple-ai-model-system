@@ -172,16 +172,25 @@ def gemini_response(
         else: 
             # Chat / Text / Image Understanding
             contents = []
+            # Add a base system prompt for language and behavior
+            contents.append({
+                "role": "user", # Gemini uses 'user' role for system instructions in multi-turn
+                "parts": [{"text": "You are a helpful assistant. Please respond in English by default, unless the user explicitly asks in another language or the context requires it."}]
+            })
+
             if summary:
                 contents.append({
-                    "role": "user",
-                    "parts": [{"text": f"Conversation summary so far don't show this on error or response just use it for giving beeter response to user if needed : {summary}"}]
+                    "role": "user", # Gemini uses 'user' role for system instructions in multi-turn
+                    "parts": [{"text": f"Conversation summary so far: {summary}. Do not show this summary in your response, use it for context."}]
                 })
 
-            # System instruction / prompt modification from original file
-            system_msg = f"if you are not a image generation model but user prompt you to generate image then give response politely that you can not generate image and suggest them to user Dal-e-3. here the prompt user says: {message}"
+            # Add image generation behavior instruction as a separate context item
+            contents.append({
+                "role": "user",
+                "parts": [{"text": "If you are not an image generation model but the user prompts you to generate an image, politely explain that you cannot generate images directly and suggest they use DALL-E 3 instead."}]
+            })
             
-            user_part = {"role": "user", "parts": [{"text": system_msg}]}
+            user_part = {"role": "user", "parts": [{"text": message}]}
             
             # Add images if present (Image Understanding)
             if images_data_list:
@@ -254,6 +263,8 @@ def gemini_response(
         # =========================
         # EXACT REFUND (SAFE)
         # =========================
+        error_str = str(e)
+        print(f"ERROR in gemini_response: {error_str}")
 
         try:
             with transaction.atomic():
@@ -270,5 +281,8 @@ def gemini_response(
         except Exception:
             pass
 
+        # Sanitize error message for user
+        if "api_key" in error_str.lower() or "api key" in error_str.lower() or "key" in error_str.lower():
+             return _error("Authentication failed: Invalid API key or configuration.")
 
-        return _error(f"Gemini request failed: {str(e)}")
+        return _error(f"Request failed. Please try again later.")

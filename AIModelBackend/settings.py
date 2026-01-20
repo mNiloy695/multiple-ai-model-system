@@ -56,6 +56,7 @@ CSRF_TRUSTED_ORIGINS = [
 APPEND_SLASH = False
 INSTALLED_APPS = [
     "daphne",
+    'unfold',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -73,8 +74,27 @@ INSTALLED_APPS = [
     'ads_rewards',
     'django_filters',
     'drf_spectacular',
+    
 
 ]
+
+#unfold settings
+
+UNFOLD = {
+    "SITE_TITLE": "Z99 Admin",
+    "SITE_HEADER": "Z99 Administration",
+    "SITE_URL": "/",
+    "SITE_SYMBOL": "dashboard",
+    "SHOW_HISTORY": True,
+    "SHOW_VIEW_ON_SITE": True,
+    
+
+    "SIDEBAR": {   # FIXED KEY
+        "show_icons": True,
+        "show_search": True,
+    },
+}
+
 
 REST_FRAMEWORK = {
     'DEFAULT_FILTER_BACKENDS': [
@@ -114,7 +134,9 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 STORAGES = {
-    # ...
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
     "staticfiles": {
         "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
     },

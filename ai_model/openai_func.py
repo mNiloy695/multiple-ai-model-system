@@ -5,6 +5,7 @@ from openai import OpenAI
 
 from accounts.models import CreditAccount
 from .track_used_word_subscription import trackUsedWords
+from .image_to_url_save import download_and_store_video
 
 User = get_user_model()
 
@@ -36,6 +37,14 @@ def calculate_cost(model_type, *, base_cost, words=0, num_images=1, secounds=4, 
 
 import time
 
+
+
+
+
+#helper function for video generation
+# def video_generatio()
+
+
 def gpt_response(
     message: str,
     model_id: str,
@@ -63,7 +72,21 @@ def gpt_response(
 
     prompt_words = len(message.split())
     input_images_count = len(images_data_list) if images_data_list else 0
-
+    if model_type=="video_generation":
+        size=f"{width}x{height}"
+        if model_id=="sora-2":
+            if size not in ["720x1280","1280x720"]:
+                    size="1280x720"
+        if model_id=="sora-2-pro":
+                size_list=["1280x720","720x1280","1024x1792","1792x1024"]
+                if size not in size_list:
+                    size="1280x720"
+                else:
+                    import math
+                    if size in ["1280x720","720x1280"]:
+                        base_cost=Decimal(base_cost)*1
+                    else:
+                        base_cost=math.ceil(Decimal(base_cost)*1.67)
     charge_amount = calculate_cost(
         model_type,
         base_cost=base_cost,
@@ -109,15 +132,24 @@ def gpt_response(
         # Cap at safe limit
         final_max_tokens = min(max_response_words, 4096)
 
+    text = ""
+    images = []
+
     try:
         # Execute the model request
         if model_type in {"chat", "completion", "image_understanding"}:
             messages = []
 
+            # Add a base system prompt for language and behavior
+            messages.append({
+                "role": "system",
+                "content": "You are a helpful assistant. Please respond in English by default, unless the user explicitly asks in another language or the context requires it."
+            })
+
             if summary:
                 messages.append({
                     "role": "system",
-                    "content": summary
+                    "content": f"Conversation summary so far: {summary}. Use this for context only."
                 })
 
             # Construct multimodal user message if images exist
@@ -170,18 +202,31 @@ def gpt_response(
                         trackUsedWords(user.id, response_words)
 
         elif model_type == "image_generation":
-            if f"{width}x{height}" not in ["1024x1024","1536x1024"]:
-                width=1024
-                height=1024
+            # DALL-E 3 only supports n=1
+            gen_n = num_images
+            if "dall-e-3" in model_id.lower():
+                gen_n = 1
+            
+            # Support standard DALL-E sizes
+            current_size = f"{width}x{height}"
+            allowed_dalle3_sizes = ["1024x1024", "1792x1024", "1024x1792"]
+            if "dall-e-3" in model_id.lower() and current_size not in allowed_dalle3_sizes:
+                current_size = "1024x1024"
+            elif "dall-e-2" in model_id.lower() and current_size not in ["256x256", "512x512", "1024x1024"]:
+                current_size = "1024x1024"
+
+            print(f"DEBUG: Generating {gen_n} image(s) with {model_id} (requested size: {width}x{height}, using: {current_size})")
+            
             res = client.images.generate(
                 model=model_id,
                 prompt=message,
-                n=num_images,
-                size=f"{width}x{height}",
+                n=gen_n,
+                size=current_size,
             )
 
-            text = f"{num_images} image(s) generated"
+            text = f"{gen_n} image(s) generated."
             images = [img.url for img in res.data]
+            print(f"DEBUG: Image generation success. URLs count: {len(images)}")
 
         elif model_type == "audio_generation":
             res = client.audio.transcriptions.create(
@@ -209,17 +254,9 @@ def gpt_response(
 
             text = str(res.results[0])
             # images = []
-        elif model_type=="video_generation":
-            job = client.videos.create(
-                model="sora-2", # user specified model
-                prompt=message or "Video generation", 
-                seconds=int(duration),
-                size=f"{width}x{height}"
-                )
+        elif model_type == "video_generation":
+            images, text = _handle_openai_video_generation(client, model_id, message, duration, size)
 
-            text = f"Video generation started: {getattr(job, 'id', 'unknown')}"
-            # No images/video URL yet if async?
-            
         return {
             "text": text or "",
             "images": images or [],
@@ -228,15 +265,30 @@ def gpt_response(
         }
 
     except Exception as e:
-        # Refund on failure
-        with transaction.atomic():
-            credit_account.credits += charge_amount
-            credit_account.save(update_fields=["credits"])
+        error_str = str(e)
+        print(f"ERROR in gpt_response: {error_str}")
+        
+        # Refund on failure if credits were deducted
+        try:
+            if 'charge_amount' in locals() and 'credit_account' in locals() and credit_account:
+                with transaction.atomic():
+                    # Refresh credit account to be safe
+                    ca = CreditAccount.objects.select_for_update().filter(user=user).first()
+                    if ca:
+                        ca.credits += charge_amount
+                        ca.save(update_fields=["credits"])
 
-            user.total_token_used -= charge_amount
-            user.save(update_fields=["total_token_used"])
+                        user.total_token_used -= charge_amount
+                        user.save(update_fields=["total_token_used"])
+                        print(f"DEBUG: Refunded {charge_amount} credits due to error.")
+        except Exception as refund_err:
+            print(f"ERROR during refund: {refund_err}")
 
-        return _error(str(e))
+        # Sanitize error message for user
+        if "api_key" in error_str.lower() or "api key" in error_str.lower() or "incorrect api" in error_str.lower():
+            return _error("Authentication failed: Invalid API key or configuration.")
+        
+        return _error(f"Request failed. Please try again later.")
 
 
 # Helpers
@@ -249,6 +301,91 @@ def _error(msg: str) -> dict:
     }
 
 #     return "unknown"
+
+
+def _handle_openai_video_generation(client, model_id, message, duration, size):
+    """
+    Helper to handle OpenAI video generation (Sora) using the client.videos.create method.
+    Returns (images_list, text_response).
+    """
+    import time
+    from .image_to_url_save import download_and_store_video
+
+    # Format seconds as string, allowed values: 4, 8, 12
+    try:
+        sec = int(duration)
+        if sec not in [4, 8, 12]:
+            sec = 4
+    except:
+        sec = 4
+    seconds_str = str(sec)
+
+    # Allowed sizes as per documentation: 720x1280, 1280x720, 1024x1792, 1792x1024
+    allowed_sizes = ["720x1280", "1280x720", "1024x1792", "1792x1024"]
+    if size not in allowed_sizes:
+        # Try finding a closest match or default
+        size = "1280x720"
+
+    print(f"DEBUG: Initiating Sora video generation: model={model_id}, seconds={seconds_str}, size={size}")
+
+    # Call the correct endpoint: client.videos.create
+    try:
+        response = client.videos.create(
+            model=model_id,
+            prompt=message or "Video generation",
+            seconds=seconds_str,
+            size=size
+        )
+    except Exception as e:
+        raise Exception(f"Video API Error: {str(e)}")
+    
+    job_id = getattr(response, 'id', None)
+    if not job_id:
+        # Fallback for different SDK versions
+        job_id = getattr(response, 'data', [{}])[0].get('id') if hasattr(response, 'data') else None
+
+    if not job_id:
+        raise Exception("Failed to retrieve Job ID from OpenAI video generation response.")
+
+    video_url = None
+    max_attempts = 120  # ~10 minutes
+    
+    for i in range(max_attempts):
+        # Refresh status using the job ID
+        try:
+            job = client.videos.retrieve(job_id)
+            if job.status == "completed":
+                # Extract URL
+                if hasattr(job, 'url') and job.url:
+                    video_url = job.url
+                elif hasattr(job, 'data') and len(job.data) > 0:
+                    video_url = job.data[0].url
+                break
+            
+            if job.status == "failed":
+                error_details = getattr(job, 'last_error', None) or getattr(job, 'error', 'Unknown provider error')
+                raise Exception(f"Video generation failed: {error_details}")
+        except Exception as poll_err:
+            print(f"DEBUG: Polling error (attempt {i+1}): {poll_err}")
+            # Continue polling unless it's a fatal failure
+        
+        time.sleep(5)
+    
+    if not video_url:
+        raise Exception("Video generation timed out or no video URL found in completed job.")
+    
+    # Download and store locally
+    try:
+        saved_videos = download_and_store_video(video_url)
+        if saved_videos and saved_videos[0]:
+            return [saved_videos[0]], "Video generated successfully."
+    except Exception as e:
+        print(f"Error downloading Sora video: {e}")
+        
+    return [video_url], f"Video generated but local storage failed. URL: {video_url}"
+
+
+
 
 
 def _detect_model(model_id: str) -> str:
@@ -266,7 +403,7 @@ def _detect_model(model_id: str) -> str:
     # STRICT / HIGH-CONFIDENCE
     # -------------------------
 
-    if "sora" in model or "video" in model:
+    if "sora-2" in model or "sora-2-pro" in model:
         return "video_generation"
 
     if "image" in model or "dall-e" in model or "img" in model:

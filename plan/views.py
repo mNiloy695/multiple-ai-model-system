@@ -316,6 +316,7 @@ class VerifyGooglePurchaseView(APIView):
                 plan=plan,
                 amount=plan.amount,
                 payment_status="paid",
+                words=plan.words_or_credits
             )
 
             return Response({

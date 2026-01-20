@@ -37,6 +37,7 @@ def call_deepseek_for_chat(
     user_id: int, 
     base_cost: int = 1, 
     message: str = "", 
+    summary: str = None,
     temperature: float = 0.7
 ):
     try:
@@ -105,12 +106,21 @@ def call_deepseek_for_chat(
                 base_url="https://api.deepseek.com"
             )
 
+            messages = [
+                {"role": "system", "content": "You are a helpful assistant. Please respond in English by default, unless the user explicitly asks in another language or the context requires it."}
+            ]
+
+            if summary:
+                messages.append({
+                    "role": "system",
+                    "content": f"Conversation summary so far: {summary}. Use this for context only."
+                })
+
+            messages.append({"role": "user", "content": message})
+
             response = client.chat.completions.create(
                 model="deepseek-chat", # or use model_id if dynamic
-                messages=[
-                    {"role": "system", "content": "You are a helpful assistant"},
-                    {"role": "user", "content": message},
-                ],
+                messages=messages,
                 max_tokens=final_max_tokens, # Limit generation to what they can pay for
                 temperature=temperature,
             )
@@ -148,7 +158,8 @@ def call_deepseek_for_chat(
 
         except Exception as api_error:
             # 5. Refund on Failure
-            print(f"DEBUG: DeepSeek API Error causing Refund: {str(api_error)}")
+            error_str = str(api_error)
+            print(f"DEBUG: DeepSeek API Error: {error_str}")
             with transaction.atomic():
                 # Re-fetch logic or use updated objects
                 # Note: 'credit_account' object is stale, re-fetching is safer or just incrementing
@@ -161,7 +172,11 @@ def call_deepseek_for_chat(
                     user.save(update_fields=["total_token_used"])
                     print(f"DEBUG: DeepSeek Refunded {charge_amount} credits.")
             
-            return _error(f"DeepSeek API error: {str(api_error)}")
+            # Sanitize error message for user
+            if "api_key" in error_str.lower() or "api key" in error_str.lower() or "incorrect api" in error_str.lower():
+                return _error("Authentication failed: Invalid API key or configuration.")
+
+            return _error(f"API error. Please try again later.")
 
     except Exception as e:
-        return _error(f"System error: {str(e)}")
+        return _error(f"System error occurred.")

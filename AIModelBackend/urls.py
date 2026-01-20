@@ -20,6 +20,7 @@ urlpatterns = [
     path('api/v1/ads/',include('ads_rewards.urls')),
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
     path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema')),
+    
 ]
 
 if settings.DEBUG or True:

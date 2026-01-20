@@ -5,7 +5,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from .utils import send_the_email
-from .models import OTP
+from .models import OTP,CreditAccount
 from django.contrib.auth import get_user_model
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from .tasks import send_otp_email_task
@@ -207,6 +207,8 @@ class ResetView(APIView):
                 return Response({"error": "OTP expired"}, status=status.HTTP_400_BAD_REQUEST)
 
             user.set_password(password)
+            if user.is_active == False:
+                user.is_active = True
             user.save()
             
             # Delete OTP after successful use
@@ -235,8 +237,71 @@ class ProfileView(viewsets.ModelViewSet):
     queryset=UserProfile.objects.select_related('user',"user__creditaccount")
     permission_classes=[CustomerPermission]
     serializer_class=UserProfileSerializer
+    
+
+    def create(self, request, *args, **kwargs):
+        # Check if user already has a profile
+        profile = UserProfile.objects.filter(user=request.user).first()
+        if profile:
+            # If profile exists, update it instead of creating a new one
+            serializer = self.get_serializer(profile, data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            first_name=request.data.get("first_name",None)
+            last_name=request.data.get("last_name",None)
+            if first_name:
+                request.user.first_name=first_name
+            if last_name:
+                request.user.last_name=last_name
+            request.user.save(update_fields=['first_name','last_name'])
+            self.perform_update(serializer)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return super().create(request, *args, **kwargs)
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+    # def get_queryset(self):
+    #     if self.request.user.is_staff:
+    #         return super().get_queryset()
+    #     return super().get_queryset().filter(user=self.request.user)
 
     def get_queryset(self):
-        if self.request.user.is_staff:
-            return super().get_queryset()
-        return super().get_queryset().filter(user=self.request.user)
+        queryset = super().get_queryset()
+        queryset = queryset.filter(user=self.request.user)
+
+        # Non-staff users only see their own profile
+        # if not self.request.user.is_staff:
+        #     queryset = queryset.filter(user=self.request.user)
+
+        # 🔍 Filter by email (query param)
+        email = self.request.query_params.get("email")
+        if email:
+            queryset = queryset.filter(user__email__icontains=email)
+
+        return queryset
+    
+
+
+
+
+
+#Credit Account View
+
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from .models import CreditAccount
+from .serializers import CreditAccountSerializer
+from rest_framework.permissions import IsAuthenticated
+
+
+
+class CreditAccountView(APIView):
+    permission_classes = [IsAuthenticated]
+    def get(self, request):
+        try:
+            credit_account = CreditAccount.objects.get(user=request.user)
+            serializer = CreditAccountSerializer(credit_account)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except CreditAccount.DoesNotExist:
+            return Response({"error": "Credit account not found."}, status=status.HTTP_404_NOT_FOUND)
