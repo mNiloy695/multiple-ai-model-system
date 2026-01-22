@@ -100,6 +100,8 @@ async def wavespeed_ai_call(model_id, api_key, payload=None, poll_interval=0.5, 
                     return
                 print(f"DEBUG: Wavespeed Pre-deduction. User: {user_id}, Current: {ca.credits}, Charging: {image_deduct_credit}")
                 ca.credits -= Decimal(str(image_deduct_credit))
+                if ca.credits < 0:
+                    ca.credits = 0
                 ca.save(update_fields=["credits"])
                 
                 u = User.objects.get(id=user_id)

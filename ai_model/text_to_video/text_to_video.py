@@ -137,6 +137,8 @@ async def text_to_video_generation(model_id, prompt, api_key, duration, height, 
             print(f"DEBUG: [VideoGen] Pre-deduction. User: {user_id}, Current: {acc.credits}, Charging: {total_base_cost}")
             from decimal import Decimal
             acc.credits -= Decimal(str(total_base_cost))
+            if acc.credits < 0:
+                acc.credits = 0
             acc.save(update_fields=['credits'])
             
             u = User.objects.get(id=user_id)

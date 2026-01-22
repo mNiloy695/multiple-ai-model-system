@@ -23,7 +23,9 @@ def call_fal_ai(api_key, prompt,model,user_id,num_images=1,base_cost=None,seed=6
     if credit_account.credits <image_deduct_credit:
         return {"error": "Insufficient credits! TOP UP NOW!"}
     
-    credit_account.credits-=image_deduct_credit
+    credit_account.credits -= image_deduct_credit
+    if credit_account.credits < 0:
+        credit_account.credits = 0
     credit_account.save()
     trackUsedWords(user, word_count=image_deduct_credit)
     user.total_token_used+=image_deduct_credit

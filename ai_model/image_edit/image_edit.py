@@ -67,13 +67,15 @@ def image_edit(model_id,prompt,api_key,user_id,output_format="png",aspect_ratio=
 
     # images=[images] if isinstance(images,str) else images
     print("type of images",type(images))
+    processed_images = prepare_image(images)
+    
     payload = {
         "prompt": prompt,
         "enable_base64_output": False,
         "enable_sync_mode": False,
         "spect_ratio":aspect_ratio,
         "images": [
-                images
+                processed_images
         ],
         "output_format": output_format
     }

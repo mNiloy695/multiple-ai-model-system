@@ -19,9 +19,15 @@ User=get_user_model()
 #Plan model views
 
 class PlanView(viewsets.ModelViewSet):
-    permission_classes=[permissions.IsAdminUser]
+    permission_classes=[permissions.IsAuthenticatedOrReadOnly]
     queryset=PlanModel.objects.all().order_by('-created_at')
     serializer_class=PlanSerializer
+
+    def has_permission(self, request, view):
+        if request.method in permissions.SAFE_METHODS:
+            return request.user and request.user.is_authenticated
+        return request.user and request.user.is_staff
+        
 
 
 

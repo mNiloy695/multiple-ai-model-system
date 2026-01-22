@@ -30,12 +30,19 @@ from .image_to_3d.image_to_3d import image_to_3d
 from .download_video.download_veo_video import generate_veo3_preview_video
 
 def detect_media_easy(url):
-    url = url.lower()
+    if not url or not isinstance(url, str):
+        return "unknown"
+        
+    # Handle Base64 Data URIs
+    if url.startswith("data:image/") or ";base64," in url:
+        return "image"
+        
+    url_lower = url.lower()
 
-    if url.endswith((".jpg", ".jpeg", ".png", ".gif", ".webp")):
+    if url_lower.endswith((".jpg", ".jpeg", ".png", ".gif", ".webp")):
         return "image"
 
-    if url.endswith((".mp4", ".mov", ".avi", ".mkv", ".webm")):
+    if url_lower.endswith((".mp4", ".mov", ".avi", ".mkv", ".webm")):
         return "video"
 
     return "unknown"
@@ -218,16 +225,24 @@ class ChatConsumer(AsyncWebsocketConsumer):
                     return
                 elif detect_image_or_video=="image":
                     images=await sync_to_async(download_and_store_webp)(image_urls=user_images)
+                    # Support for passing stored links to AI if original was base64
+                    processed_user_images = []
+                    for i, original in enumerate(user_images):
+                        if (original.startswith("data:image/") or ";base64," in original) and images[i]:
+                            processed_user_images.append(images[i])
+                        else:
+                            processed_user_images.append(original)
+                    user_images = processed_user_images
+                    data["images"] = user_images # Update the data dict for subsequent model calls
                 if detect_image_or_video =="video":
                     images=user_images
-                images = [img for img in images]
+                images = [img for img in images if img]
                         
                 saved_message = await self.save_message(
                             self.session_id,
                             self.user,
                             "user",
                             content = message_content,
-
                             images=images
                         )
                 if saved_message:
@@ -320,7 +335,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                             self.user,
                             "ai",
                             content = ai_response.get("text") or ai_response.get("content") or ai_response.get("error") or "",
-                            images=final_images or raw_images
+                            images=final_images if final_images else raw_images if not any(img.startswith("data:") for img in raw_images) else []
                         )
                         if saved_ai_message:
                             await self.send_json_with_credits({"type": "new_message", "message": saved_ai_message})
@@ -390,7 +405,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                             self.user,
                             "ai",
                             content = resp_content,
-                            images=final_images or raw_images # fallback to raw if download failed
+                            images=final_images if final_images else raw_images if not any(img.startswith("data:") for img in raw_images) else []
                         )
                         if saved_ai_message:
 
@@ -439,7 +454,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                             self.user,
                             "ai",
                             content = ai_response.get("text") or ai_response.get("content") or ai_response.get("error") or "",
-                            images=final_images or raw_images
+                            images=final_images if final_images else raw_images if not any(img.startswith("data:") for img in raw_images) else []
                         )
                         if saved_ai_message:
                             await self.send_json_with_credits({"type": "new_message", "message": saved_ai_message})
@@ -522,7 +537,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                             self.user,
                             "ai",
                             content = ai_response.get("text") or ai_response.get("content") or ai_response.get("error") or "",
-                            images=final_images or raw_images
+                            images=final_images if final_images else raw_images if not any(img.startswith("data:") for img in raw_images) else []
                         )
                         if saved_ai_message:
                             await self.send_json_with_credits({"type": "new_message", "message": saved_ai_message})
@@ -602,7 +617,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                                 self.user,
                                 "ai",
                                 content = "Image processed successfully",
-                                images=final_images or raw_images
+                                images=final_images if final_images else raw_images if not any(img.startswith("data:") for img in raw_images) else []
                             )
                             if saved_ai_message:
                                 await self.send_json_with_credits({"type": "new_message", "message": saved_ai_message})
@@ -824,7 +839,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                             self.user,
                             "ai",
                             content = ai_response.get("text") or ai_response.get("content") or ai_response.get("error") or "",
-                            images=final_images or raw_images
+                            images=final_images if final_images else raw_images if not any(img.startswith("data:") for img in raw_images) else []
                  )
                 if saved_ai_message:
                             await self.send_json_with_credits({"type": "new_message", "message": saved_ai_message})
@@ -866,7 +881,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                             self.user,
                             "ai",
                             content = ai_response.get("text") or ai_response.get("content") or ai_response.get("error") or "",
-                            images=final_images or raw_images
+                            images=final_images if final_images else raw_images if not any(img.startswith("data:") for img in raw_images) else []
                         )
                         if saved_ai_message:
                             await self.send_json_with_credits({"type": "new_message", "message": saved_ai_message})

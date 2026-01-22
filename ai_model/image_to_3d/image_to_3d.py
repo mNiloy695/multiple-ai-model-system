@@ -4,8 +4,42 @@ import json
 import time
 
 from django.contrib.auth import get_user_model
+import base64
+from django.conf import settings
+
 User=get_user_model()
-from accounts.models import CreditAccount
+
+def get_image_as_base64(url):
+    """
+    Converts an image URL (local or remote) to a base64 data URI.
+    """
+    if not url:
+        return None
+    if url.startswith("data:"):
+        return url
+        
+    try:
+        if (settings.BASE_URL and settings.BASE_URL in url) or "10.10.13.75" in url or "localhost" in url:
+            media_url = settings.MEDIA_URL
+            if media_url in url:
+                relative_path = url.split(media_url)[-1]
+                local_path = os.path.join(settings.MEDIA_ROOT, relative_path)
+                if os.path.exists(local_path):
+                    with open(local_path, "rb") as f:
+                        encoded = base64.b64encode(f.read()).decode("utf-8")
+                        ext = os.path.splitext(local_path)[1].lower()
+                        mime = "image/jpeg" if ext in ['.jpg', '.jpeg'] else "image/png"
+                        return f"data:{mime};base64,{encoded}"
+
+        if url.startswith("http"):
+            resp = requests.get(url, timeout=10)
+            if resp.status_code == 200:
+                encoded = base64.b64encode(resp.content).decode("utf-8")
+                mime = resp.headers.get("Content-Type", "image/png")
+                return f"data:{mime};base64,{encoded}"
+    except Exception as e:
+        print(f"DEBUG: get_image_as_base64 failed: {e}")
+    return url
 
 def image_to_3d(model_id,api_key,user_id,images,base_cost):
 
@@ -35,8 +69,9 @@ def image_to_3d(model_id,api_key,user_id,images,base_cost):
         "Content-Type": "application/json",
         "Authorization": f"Bearer {API_KEY}",
     }
+    processed_image = get_image_as_base64(images)
     payload = {
-        "image": images
+        "image": processed_image
     }
 
     begin = time.time()

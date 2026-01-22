@@ -10,8 +10,42 @@ from django.contrib.auth import get_user_model
 from accounts.models import CreditAccount
 from django.db import transaction
 from ..track_used_word_subscription import trackUsedWords
+import base64
+from django.conf import settings
+
 User=get_user_model()
 
+def get_image_as_base64(url):
+    """
+    Converts an image URL (local or remote) to a base64 data URI.
+    """
+    if not url:
+        return None
+    if url.startswith("data:"):
+        return url
+        
+    try:
+        if (settings.BASE_URL and settings.BASE_URL in url) or "10.10.13.75" in url or "localhost" in url:
+            media_url = settings.MEDIA_URL
+            if media_url in url:
+                relative_path = url.split(media_url)[-1]
+                local_path = os.path.join(settings.MEDIA_ROOT, relative_path)
+                if os.path.exists(local_path):
+                    with open(local_path, "rb") as f:
+                        encoded = base64.b64encode(f.read()).decode("utf-8")
+                        ext = os.path.splitext(local_path)[1].lower()
+                        mime = "image/jpeg" if ext in ['.jpg', '.jpeg'] else "image/png"
+                        return f"data:{mime};base64,{encoded}"
+
+        if url.startswith("http"):
+            resp = requests.get(url, timeout=10)
+            if resp.status_code == 200:
+                encoded = base64.b64encode(resp.content).decode("utf-8")
+                mime = resp.headers.get("Content-Type", "image/png")
+                return f"data:{mime};base64,{encoded}"
+    except Exception as e:
+        print(f"DEBUG: get_image_as_base64 failed: {e}")
+    return url
 
 def  image_upscaler_wavespeed_ai(model_id,api_key,user_id,base_cost,image_url,target_resolution):
     print("Hello from WaveSpeedAI!")
@@ -48,8 +82,9 @@ def  image_upscaler_wavespeed_ai(model_id,api_key,user_id,base_cost,image_url,ta
     # if target_resolution not in possible_resolutions:
     #     raise ValueError(f"Invalid target resolution {target_resolution}. Available options: {possible_resolutions}")
     
+    processed_image = get_image_as_base64(image_url)
     payload = {
-        "video": image_url,
+        "video": processed_image,
         "target_resolution": target_resolution if target_resolution else "4k"
     }
 

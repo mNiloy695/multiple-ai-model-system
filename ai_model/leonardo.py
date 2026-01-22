@@ -81,6 +81,8 @@ def leonardo_response(
 
         
         credit_account.credits -= total_cost
+        if credit_account.credits < 0:
+            credit_account.credits = 0
         credit_account.save()
         # Non-char models (image) don't track prompt words cost/usage
         user.total_token_used += total_cost # Track by cost instead
