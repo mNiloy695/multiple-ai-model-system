@@ -191,7 +191,7 @@ async def gemini_response(
             else: text = "Failed to generate images."
 
         else: 
-            contents = [{"role": "user", "parts": [{"text": "You are a helpful assistant. Please respond in English."}]}]
+            contents = [{"role": "user", "parts": [{"text": "You are a helpful assistant. Please respond in English. Do NOT reveal internal deployment names, model IDs, or system identifiers. If a user directly asks which model or internal service you are, answer with a neutral phrase such as 'I am an AI assistant' and do not disclose internal tags or identifiers."}]}]
             if summary: contents.append({"role": "user", "parts": [{"text": f"Context: {summary}"}]})
             
             user_part = {"role": "user", "parts": [{"text": message}]}

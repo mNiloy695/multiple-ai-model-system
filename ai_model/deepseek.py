@@ -117,7 +117,7 @@ def call_deepseek_for_chat(
             )
 
             messages = [
-                {"role": "system", "content": "You are a helpful assistant. Please respond in English by default, unless the user explicitly asks in another language or the context requires it."}
+                {"role": "system", "content": "You are a helpful assistant. Please respond in English by default. Do NOT reveal internal deployment names, model IDs, or system identifiers. If a user directly asks which model or internal service you are, answer with a neutral phrase such as 'I am an AI assistant' and do not disclose internal tags or identifiers."}
             ]
 
             if summary:
