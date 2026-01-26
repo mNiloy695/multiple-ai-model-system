@@ -587,7 +587,36 @@ ws://10.10.13.75:8082/ws/chat/1/?token=eyJ0eXAiOiJKV1QiLCJhbGc...
 
 ---
 
-#### 3. Text-to-Video (Wavespeed AI, Google Veo)
+#### 3. Text-to-Video (OpenAI Sora, Wavespeed AI, Google Veo)
+
+**Send Message (OpenAI Sora):**
+```json
+{
+  "message": "A cinematic drone shot of a futuristic city",
+  "duration": "4",
+  "width": 1280,
+  "height": 720,
+  "seed": 42
+}
+```
+
+**Parameters:**
+- `message` (required): Video description.
+- `duration` (optional): Video duration in seconds (default: "4").
+  - Allowed values: "4", "8", "12".
+- `width` (optional): Video width.
+- `height` (optional): Video height.
+- `seed` (optional): Random seed (default: -1).
+
+**Resolution Constraints (`width` x `height`):**
+- **Sora-2 (`sora-2`):**
+  - 1280x720 (Landscape)
+  - 720x1280 (Portrait)
+- **Sora-2 Pro (`sora-2-pro`):**
+  - 1280x720 (Landscape)
+  - 720x1280 (Portrait)
+  - 1792x1024 (High Res Landscape)
+  - 1024x1792 (High Res Portrait)
 
 **Send Message (Wavespeed AI):**
 ```json

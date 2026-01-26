@@ -18,14 +18,14 @@ class AIModelSerializer(serializers.ModelSerializer):
 class AIModelLimitedSerializer(serializers.ModelSerializer):
     class Meta:
         model=AIModelInfo
-        fields=['id','name','model_id','created_at','description','base_url','base_cost','model_type','provider']
+        fields=['id','name','image','logo','model_id','created_at','description','base_url','base_cost','model_type','provider']
         read_only_fields=['created_at','updated_at']
 
 class AIModelPublicSerializer(serializers.ModelSerializer):
     """Serializer for AI model info without exposing sensitive data like API keys"""
     class Meta:
         model = AIModelInfo
-        fields = ['id', 'name', 'model_id', 'description', 'provider', 'model_type', 'base_cost']
+        fields = ['id', 'name', 'image','logo','model_id', 'description', 'provider', 'model_type', 'base_cost']
         read_only_fields = fields
 
 

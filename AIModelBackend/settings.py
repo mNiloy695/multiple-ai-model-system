@@ -94,7 +94,7 @@ UNFOLD = {
         "show_search": True,
     },
 }
-
+SORA_HIGH_RES_ENABLED = True
 
 REST_FRAMEWORK = {
     'DEFAULT_FILTER_BACKENDS': [

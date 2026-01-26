@@ -7,6 +7,7 @@ from django.contrib.auth import get_user_model
 from accounts.models import CreditAccount
 from asgiref.sync import sync_to_async
 
+import django.db.transaction as transaction
 User = get_user_model()
 
 async def generate_veo3_preview_video(
