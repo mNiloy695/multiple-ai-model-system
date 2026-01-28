@@ -20,7 +20,7 @@ from .google_func import gemini_response
 from .wavespeedai import wavespeed_ai_call
 from PIL import Image
 from io import BytesIO
-from .image_to_url_save import download_and_store_webp
+from .image_to_url_save import download_and_store_webp, download_and_store_audio
 from .fal_ai import call_fal_ai
 from asgiref.sync import sync_to_async
 from django.db import transaction
@@ -63,6 +63,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 "sender": msg.sender,
                 "content": msg.content,
                 "images": msg.images,
+                "voice": msg.voice.url if msg.voice else None,
                 "timestamp": msg.created_at.isoformat(),
             }
             for msg in messages
@@ -111,8 +112,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
     
 
     @database_sync_to_async
-    def save_message(self, session_id, user, sender, content=None, images=None):
-        if not content and not images:
+    def save_message(self, session_id, user, sender, content=None, images=None, voice=None):
+        if not content and not images and not voice:
             return None
 
         try:
@@ -128,15 +129,17 @@ class ChatConsumer(AsyncWebsocketConsumer):
             session=session,
             sender=sender,
             content=content or "",
-            images=images or []
+            images=images or [],
+            voice=voice # For FileField, passing the relative path string works
         )
-        print(f"DEBUG: Successfully saved {sender} message to session {session_id}")
+        print(f"DEBUG: Successfully saved {sender} message to session {session_id} with voice: {voice}")
 
         return {
             "id": msg.id,
             "sender": msg.sender,
             "content": msg.content,
             "images": msg.images,
+            "voice": msg.voice.url if msg.voice else None,
             "timestamp": msg.created_at.isoformat()
         }
 
@@ -175,14 +178,27 @@ class ChatConsumer(AsyncWebsocketConsumer):
         await self.send_json_with_credits({"type": "previous_messages", "messages": messages})
 
     async def receive(self, text_data=None, bytes_data=None):
-        if not text_data:
+        data = {}
+        user_voice = None
+        
+        if bytes_data:
+            # Handle direct binary voice data
+            user_voice = bytes_data
+            print("DEBUG: Received direct binary voice data")
+        elif text_data:
+            try:
+                data = json.loads(text_data)
+                user_voice = data.get("voice")
+            except json.JSONDecodeError:
+                await self.send_json_with_credits({"type": "error", "message": "Invalid JSON format."})
+                return
+        else:
             return
-
-        try:
-            data = json.loads(text_data)
-        except json.JSONDecodeError:
-            await self.send_json_with_credits({"type": "error", "message": "Invalid JSON format."})
-            return
+        
+        if user_voice and isinstance(user_voice, str) and not user_voice.startswith("http"):
+            print(f"DEBUG: Received voice data (Base64), size: {len(user_voice)} chars")
+        elif user_voice:
+            print(f"DEBUG: Received voice data (URL/Bytes)")
 
         fresh_user=await database_sync_to_async(User.objects.get)(id=self.user.id)
         self.user=fresh_user
@@ -199,6 +215,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
         message_content = data.get("message", "")
         user_images = data.get("images", [])
+        # user_voice is already set from bytes or json above
 
 
         height=data.get('height')
@@ -214,7 +231,52 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 message_content=str(message_content[:400])
         
         await self.decrement_api_limit(self.user)
+        
+        # --- FIX: Load model data EARLIER so transcription can use the API key ---
+        session_data = await self.get_session_data(self.session_id, self.user)
+        if not session_data or not session_data.get("model"):
+            await self.send_json_with_credits({"text": "no available session found"})
+            await self.close(1000)
+            return 
+        
+        model = session_data.get("model")
+        provider = getattr(model, "provider", "").lower()
+        # ------------------------------------------------------------------------
 
+        voice_url = None
+        db_voice_path = None
+        if user_voice:
+             print(f"DEBUG: Processing user voice input: {str(user_voice)[:100]}...")
+             audio_result = await sync_to_async(download_and_store_audio)(user_voice)
+             if audio_result:
+                 voice_url = audio_result.get("full_url")
+                 db_voice_path = audio_result.get("relative_path")
+                 
+                 # --- RESTRICTION: Only OpenAI receives the voice transcription ---
+                 if provider == "openai":
+                     try:
+                        from . import speech_to_text
+                        model_api_key = getattr(model, "api_key", None)
+                        
+                        print(f"DEBUG: Starting transcription for OpenAI...")
+                        transcription = await sync_to_async(speech_to_text.transcribe_audio_with_whisper)(
+                            voice_url, 
+                            api_key=model_api_key
+                        )
+                        
+                        if transcription and transcription.get("text"):
+                            voice_text = transcription["text"]
+                            print(f"DEBUG: Transcription Success (OpenAI): {voice_text}")
+                            if not message_content:
+                                message_content = voice_text
+                            else:
+                                message_content = f"{message_content}\n(Voice: {voice_text})"
+                        elif transcription and transcription.get("error"):
+                             print(f"DEBUG: Transcription Error: {transcription['error']}")
+                     except Exception as te:
+                        print(f"DEBUG: Auto-transcription failed: {te}")
+                 else:
+                     print(f"DEBUG: Skipping transcription for non-OpenAI provider: {provider}")
 
         if user_images:
                 if isinstance(user_images,str):
@@ -243,34 +305,25 @@ class ChatConsumer(AsyncWebsocketConsumer):
                             self.user,
                             "user",
                             content = message_content,
-                            images=images
+                            images=images,
+                            voice=db_voice_path
                         )
                 if saved_message:
                             await self.send_json_with_credits({"type": "new_message", "message": saved_message})
         else: 
             saved_message = await self.save_message(
-            self.session_id, self.user, "user", content=message_content, images=user_images
+            self.session_id, self.user, "user", content=message_content, images=user_images, voice=db_voice_path
               )
             if saved_message:
                await self.send_json_with_credits({"type": "new_message", "message": saved_message})
         
-
-      
-        session_data = await self.get_session_data(self.session_id, self.user)
-        if not session_data or not session_data.get("model"):
-            await self.send_json_with_credits({"text": "no available session found"})
-            await self.close(1000)
-            return 
-
-        model = session_data.get("model")
-        
         # Check for empty message specifically for chat models
         model_type = getattr(model, "model_type", None)
-        if model_type == "chat" and not message_content and not user_images:
+        if model_type == "chat" and not message_content and not user_images and not user_voice:
             await self.send_json_with_credits({"type": "error", "message": "Please type a message to receive assistance."})
             return
 
-        provider = getattr(model, "provider", "").lower()
+        # provider is already defined above
 
         if provider == "google":
             model_id = getattr(model, "model_id", None)
@@ -379,7 +432,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                             base_cost=base_cost
                         )
                     else:
-                        ai_response = await gpt_response(message=message_content,model_id=model_id,api_key=api_key,user_id=self.user.id,images_data_list=user_images,summary=session_data.get("summary"),num_images=num_images,base_cost=base_cost,duration=duration,height=height,width=width,aspect_ratio=aspect_ratio)
+                        ai_response = await gpt_response(message=message_content,model_id=model_id,api_key=api_key,user_id=self.user.id,images_data_list=user_images,audio_data=voice_url,summary=session_data.get("summary"),num_images=num_images,base_cost=base_cost,duration=duration,height=height,width=width,aspect_ratio=aspect_ratio)
 
                     
                     if ai_response:
@@ -396,6 +449,28 @@ class ChatConsumer(AsyncWebsocketConsumer):
                         
                         resp_content = ai_response.get("text") or ai_response.get("content") or ai_response.get("error") or ""
                         
+                        # --- GENERATE AI VOICE IF USER SENT VOICE ---
+                        ai_voice_db_path = None
+                        if voice_url and resp_content:
+                            try:
+                                from .text_to_speech.text_to_speech import text_to_sound
+                                # Generate speech from AI text response
+                                raw_ai_voice = await database_sync_to_async(text_to_sound)(
+                                    model_id="text_to_speech",
+                                    api_key=api_key, 
+                                    user_id=self.user.id,
+                                    base_cost=base_cost,
+                                    prompt=resp_content,
+                                    voice_id="Wise_Woman"
+                                )
+                                # Save it locally
+                                if raw_ai_voice:
+                                    ai_voice_result = await sync_to_async(download_and_store_audio)(raw_ai_voice)
+                                    if ai_voice_result:
+                                        ai_voice_db_path = ai_voice_result.get("relative_path")
+                            except Exception as v_err:
+                                print(f"DEBUG: Failed to generate AI voice: {v_err}")
+                        
                         # Safety fallback if somehow both are empty
                         if not resp_content and not final_images and not raw_images:
                             resp_content = "The model generated an empty response. Please try again."
@@ -405,7 +480,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
                             self.user,
                             "ai",
                             content = resp_content,
-                            images=final_images if final_images else raw_images if not any(img.startswith("data:") for img in raw_images) else []
+                            images=final_images if final_images else raw_images if not any(img.startswith("data:") for img in raw_images) else [],
+                            voice=ai_voice_db_path
                         )
                         if saved_ai_message:
 

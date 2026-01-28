@@ -153,11 +153,17 @@ async def gpt_response(
                 messages.append({"role": "system", "content": f"Conversation summary: {summary}"})
 
             user_content = []
-            if message: user_content.append({"type": "text", "text": message})
+            
+            # Combine everything into a simple text-based multimodal format
+            # message will already contain the transcription from consumers.py
+            if message:
+                user_content.append({"type": "text", "text": message})
+            
             if images_data_list:
                 for img_url in images_data_list:
                     user_content.append({"type": "image_url", "image_url": {"url": img_url}})
             
+            # If everything is empty, send a space to avoid API error
             messages.append({"role": "user", "content": user_content or " "})
 
             res = await client.chat.completions.create(

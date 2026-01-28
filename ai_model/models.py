@@ -97,6 +97,7 @@ class ChatMessage(models.Model):
     session = models.ForeignKey(ChatSession, on_delete=models.CASCADE, related_name='messages')
     sender = models.CharField(max_length=50, choices=[('user', 'User'), ('ai', 'AI Model')])
     images = models.JSONField(default=list, blank=True)
+    voice = models.FileField(upload_to='media/voice_chat/', null=True, blank=True)
     content = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
