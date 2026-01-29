@@ -147,5 +147,6 @@ weasel==0.4.1
 websockets==15.0.1
 whitenoise==6.11.0
 wrapt==2.0.0
+langdetect==1.0.9
 xx_ent_wiki_sm @ https://github.com/explosion/spacy-models/releases/download/xx_ent_wiki_sm-3.8.0/xx_ent_wiki_sm-3.8.0-py3-none-any.whl#sha256=6f3c4b853852ea9e9d2dc76cc950dddb10a7e4c42d813308caefe6c5e8be2f0a
 zope.interface==8.0.1

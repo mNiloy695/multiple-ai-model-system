@@ -191,6 +191,12 @@
             margin-bottom: 5px;
             opacity: 0.6;
         }
+
+        .error {
+            color: #ef4444;
+            font-size: 12px;
+            margin-top: 5px;
+        }
     </style>
 </head>
 
@@ -200,7 +206,7 @@
         <div class="chat-header">
             <div>
                 <h3 style="margin:0; font-weight: 600;">Z99 AI Voice Chat</h3>
-                <div class="token-bar">Target: ws://10.10.13.75:8082/ws/chat/{session_id}</div>
+                <div class="token-bar" id="server-info">Target: ws://10.10.13.60:8082/ws/chat/{session_id}</div>
             </div>
             <div class="status">
                 <div id="status-dot" class="status-dot"></div>
@@ -240,6 +246,12 @@
         let audioChunks = [];
         let isRecording = false;
 
+        // Configuration
+        // Configuration - Update these to match your backend server
+        const SERVER_HOST = '10.10.13.60';  // Your backend server IP
+        const SERVER_PORT = '8082';          // Your backend server port
+        const WS_PROTOCOL = 'ws:';           // 'ws:' for HTTP, 'wss:' for HTTPS
+
         // 1. WebSocket Connection
         function connectWS() {
             const sessionId = document.getElementById('session-id').value;
@@ -250,13 +262,24 @@
                 return;
             }
 
-            const wsUrl = `ws://10.10.13.75:8082/ws/chat/${sessionId}/?token=${token}`;
-            socket = new WebSocket(wsUrl);
+            // Clear previous messages
+            const chatContainer = document.getElementById('chat-messages');
+            chatContainer.innerHTML = '';
+
+            const wsUrl = `${WS_PROTOCOL}//${SERVER_HOST}:${SERVER_PORT}/ws/chat/${sessionId}/?token=${token}`;
+            document.getElementById('server-info').innerText = `Connecting to: ${wsUrl}`;
+            
+            try {
+                socket = new WebSocket(wsUrl);
+            } catch (err) {
+                appendMessage("system", `Connection error: ${err.message}`);
+                return;
+            }
 
             socket.onopen = () => {
                 document.getElementById('status-dot').classList.add('online');
                 document.getElementById('status-text').innerText = "Connected";
-                appendMessage("system", "Connected to AI server.");
+                appendMessage("system", "Connected to AI server. Loading chat history...");
             };
 
             socket.onclose = (event) => {
@@ -270,28 +293,52 @@
                     alert("ERROR: Message is too large! Try a shorter voice clip.");
                 } else if (code === 1006) {
                     alert("ERROR: Server crashed or connection lost. Check server logs.");
+                } else if (code === 1000) {
+                    console.log("Normal disconnection");
                 }
             };
 
-            socket.onmessage = (event) => {
-                const data = JSON.parse(event.data);
-                console.log("Received:", data);
+            socket.onerror = (error) => {
+                console.error("WebSocket error:", error);
+                document.getElementById('status-dot').classList.remove('online');
+                document.getElementById('status-text').innerText = "Connection Error";
+                appendMessage("system", "WebSocket connection error. Check your connection.");
+            };
 
-                if (data.type === "new_message") {
-                    appendMessage("ai", data.message.content, data.message.voice);
-                } else if (data.type === "previous_messages") {
-                    data.messages.forEach(msg => appendMessage(msg.sender, msg.content, msg.voice));
-                } else if (data.type === "error") {
-                    appendMessage("system", "Error: " + data.message);
+            socket.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    console.log("Received:", data);
+
+                    if (data.type === "new_message") {
+                        appendMessage("ai", data.message.content, data.message.voice);
+                    } else if (data.type === "previous_messages") {
+                        // Mark previous messages
+                        console.log("Loading previous messages:", data.messages);
+                        data.messages.forEach(msg => {
+                            appendMessage(msg.sender, msg.content, msg.voice, true);
+                        });
+                    } else if (data.type === "error") {
+                        appendMessage("system", "Error: " + data.message);
+                    } else if (data.remaining_credits !== undefined) {
+                        console.log("Remaining credits:", data.remaining_credits);
+                    }
+                } catch (e) {
+                    console.error("Failed to parse message:", e);
                 }
             };
         }
 
         // 2. Message Handling
-        function appendMessage(sender, text, voiceUrl = null) {
+        function appendMessage(sender, text, voiceUrl = null, isPrevious = false) {
             const container = document.getElementById('chat-messages');
             const div = document.createElement('div');
             div.className = `message ${sender === 'system' ? 'ai' : sender}`;
+            
+            // Mark previous messages with reduced opacity
+            if (isPrevious) {
+                div.style.opacity = '0.7';
+            }
 
             let content = `<div>${text || ''}</div>`;
             if (voiceUrl) {
@@ -305,11 +352,18 @@
 
         async function sendMessage(audioBase64 = null) {
             if (!socket || socket.readyState !== WebSocket.OPEN) {
-                alert("Connect to WebSocket first!");
+                alert("Not connected! Please connect first.");
                 return;
             }
 
             const text = document.getElementById('text-msg').value;
+            
+            // Don't send empty messages
+            if (!text && !audioBase64) {
+                alert("Please enter a message or record audio");
+                return;
+            }
+
             const payload = {
                 "message": text,
                 "images": [],
@@ -321,44 +375,59 @@
 
             try {
                 socket.send(jsonStr);
+                
+                // Only clear text input, not audio
                 document.getElementById('text-msg').value = "";
 
-                // Optimistic UI for user message
-                if (!audioBase64) appendMessage("user", text);
-                else appendMessage("user", text || "Voice Message (Sending...)", audioBase64);
+                // Show optimistic UI for user message
+                if (!audioBase64) {
+                    appendMessage("user", text);
+                } else {
+                    appendMessage("user", text || "🎤 Voice Message", null);
+                }
             } catch (err) {
                 console.error("DEBUG: Send failed:", err);
-                appendMessage("system", "Critical error: Failed to send message.");
+                appendMessage("system", "Error: Failed to send message. " + err.message);
             }
         }
 
         // 3. Audio Recording
         async function toggleRecording() {
             if (!isRecording) {
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                mediaRecorder = new MediaRecorder(stream);
-                audioChunks = [];
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    mediaRecorder = new MediaRecorder(stream);
+                    audioChunks = [];
 
-                mediaRecorder.ondataavailable = (event) => audioChunks.push(event.data);
-                mediaRecorder.onstop = async () => {
-                    const audioBlob = new Blob(audioChunks, { type: 'audio/mp3' });
-                    const reader = new FileReader();
-                    reader.readAsDataURL(audioBlob);
-                    reader.onloadend = () => {
-                        const base64Audio = reader.result;
-                        sendMessage(base64Audio);
+                    mediaRecorder.ondataavailable = (event) => audioChunks.push(event.data);
+                    mediaRecorder.onstop = async () => {
+                        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                        const reader = new FileReader();
+                        reader.readAsDataURL(audioBlob);
+                        reader.onloadend = () => {
+                            const base64Audio = reader.result;
+                            sendMessage(base64Audio);
+                        };
+                        reader.onerror = () => {
+                            appendMessage("system", "Error reading audio file.");
+                        };
                     };
-                };
 
-                mediaRecorder.start();
-                document.getElementById('record-btn').classList.add('recording');
-                document.getElementById('record-label').innerText = "Stop";
-                isRecording = true;
+                    mediaRecorder.start();
+                    document.getElementById('record-btn').classList.add('recording');
+                    document.getElementById('record-label').innerText = "Stop";
+                    isRecording = true;
+                } catch (err) {
+                    appendMessage("system", `Microphone access denied: ${err.message}`);
+                    console.error("Microphone error:", err);
+                }
             } else {
-                mediaRecorder.stop();
-                document.getElementById('record-btn').classList.remove('recording');
-                document.getElementById('record-label').innerText = "Record";
-                isRecording = false;
+                if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                    mediaRecorder.stop();
+                    document.getElementById('record-btn').classList.remove('recording');
+                    document.getElementById('record-label').innerText = "Record";
+                    isRecording = false;
+                }
             }
         }
 
@@ -367,11 +436,19 @@
             const file = input.files[0];
             if (!file) return;
 
+            if (!file.type.startsWith('audio/')) {
+                appendMessage("system", "Error: Please select an audio file.");
+                return;
+            }
+
             const reader = new FileReader();
             reader.readAsDataURL(file);
             reader.onloadend = () => {
                 const base64Audio = reader.result;
                 sendMessage(base64Audio);
+            };
+            reader.onerror = () => {
+                appendMessage("system", "Error reading file.");
             };
         }
     </script>

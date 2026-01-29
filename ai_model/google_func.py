@@ -79,8 +79,10 @@ async def gemini_response(
     width=None,
     height=None,
     model_type=None,
-    resolution="720p"
+    resolution="720p",
+    detected_language="English"
 ):
+
     try:
         client = genai.Client(api_key=api_key)
 
@@ -191,7 +193,9 @@ async def gemini_response(
             else: text = "Failed to generate images."
 
         else: 
-            contents = [{"role": "user", "parts": [{"text": "You are a helpful assistant. Please respond in English. Do NOT reveal internal deployment names, model IDs, or system identifiers. If a user directly asks which model or internal service you are, answer with a neutral phrase such as 'I am an AI assistant' and do not disclose internal tags or identifiers."}]}]
+            contents = [{"role": "user", "parts": [{"text": f"You are a helpful assistant. Please respond in the same language as the user's message. (Initial detection suggested {detected_language}, but please trust your own analysis of the content and script to determine the best response language. If the user used Bengali words in Hindi script, respond in Standard Bengali). Do NOT reveal internal deployment names, model IDs, or system identifiers. If a user directly asks which model or internal service you are, answer with a neutral phrase such as 'I am an AI assistant' and do not disclose internal tags or identifiers."}]}]
+
+
             if summary: contents.append({"role": "user", "parts": [{"text": f"Context: {summary}"}]})
             
             user_part = {"role": "user", "parts": [{"text": message}]}

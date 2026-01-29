@@ -44,6 +44,7 @@ ALLOWED_HOSTS = [
     '10.10.13.75',
     '4867888fdea6.ngrok-free.app',
     '7817aa52e070.ngrok-free.app',
+    '10.10.13.60:8082',
     '*'
 ]
 
@@ -51,7 +52,9 @@ CSRF_TRUSTED_ORIGINS = [
     "https://overrigged-botanically-lila.ngrok-free.dev",
     'http://10.10.13.75:8000',
     'https://4867888fdea6.ngrok-free.app',
-    "https://7817aa52e070.ngrok-free.app",
+    "https://710.10.13.60:8082",
+    "http://localhost:8000",
+    "http://localhost:3000",
 ]
 # Application definition
 APPEND_SLASH = False

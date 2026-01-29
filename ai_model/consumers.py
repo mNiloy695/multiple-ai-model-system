@@ -7,7 +7,13 @@ from jwt import decode as jwt_decode
 from django.conf import settings
 from django.contrib.auth.models import AnonymousUser
 from django.contrib.auth import get_user_model
-import base64,requests
+import base64,requests,re
+try:
+    from langdetect import detect as detect_language
+except ImportError:
+    detect_language = None
+
+
 from .text_to_video.text_to_video import text_to_video_generation
 from .image_tool.image_tool import image_tool_via_wavespeedai
 
@@ -46,6 +52,183 @@ def detect_media_easy(url):
         return "video"
 
     return "unknown"
+
+
+def detect_text_language(text):
+    """Detect language from text and return language code and name"""
+    if not text:
+        return "en", "English"
+        
+    # Script-based detection for South Asian languages (more reliable than langdetect for short strings)
+    if re.search(r'[\u0980-\u09ff]', text):
+        return "bn", "Bengali"
+    if re.search(r'[\u0900-\u097f]', text):
+        # Double check if it's actually Bengali words written in Hindi script
+        bengali_phonetic_in_hindi = ['आमाके', 'तुम्हार', 'आमार', 'भलो', 'केमन', 'आछेन', 'करछ', 'खाच्छ', 'बोलो', 'कि']
+        if any(word in text for word in bengali_phonetic_in_hindi):
+             return "bn", "Bengali"
+        return "hi", "Hindi"
+
+    if re.search(r'[\u0a80-\u0aff]', text):
+        return "gu", "Gujarati"
+    if re.search(r'[\u0b80-\u0bff]', text):
+        return "ta", "Tamil"
+    if re.search(r'[\u0c00-\u0c7f]', text):
+        return "te", "Telugu"
+    if re.search(r'[\u0c80-\u0cff]', text):
+        return "kn", "Kannada"
+    if re.search(r'[\u0d00-\u0d7f]', text):
+        return "ml", "Malayalam"
+    if re.search(r'[\u0a00-\u0a7f]', text):
+        return "pa", "Punjabi"
+
+
+    if not detect_language:
+        return "en", "English"
+    
+    try:
+        lang_code = detect_language(text)
+
+        # Map language codes to readable names - Comprehensive world languages
+        language_names = {
+            # European Languages
+            "en": "English",
+            "es": "Spanish",
+            "fr": "French",
+            "de": "German",
+            "it": "Italian",
+            "pt": "Portuguese",
+            "ru": "Russian",
+            "nl": "Dutch",
+            "tr": "Turkish",
+            "pl": "Polish",
+            "cs": "Czech",
+            "sk": "Slovak",
+            "hu": "Hungarian",
+            "ro": "Romanian",
+            "bg": "Bulgarian",
+            "hr": "Croatian",
+            "sr": "Serbian",
+            "uk": "Ukrainian",
+            "el": "Greek",
+            "sv": "Swedish",
+            "da": "Danish",
+            "no": "Norwegian",
+            "fi": "Finnish",
+            "et": "Estonian",
+            "lv": "Latvian",
+            "lt": "Lithuanian",
+            
+            # Asian Languages - South Asia
+            "hi": "Hindi",
+            "bn": "Bengali",
+            "ta": "Tamil",
+            "te": "Telugu",
+            "ml": "Malayalam",
+            "kn": "Kannada",
+            "ur": "Urdu",
+            "pa": "Punjabi",
+            "gu": "Gujarati",
+            "mr": "Marathi",
+            "or": "Odia",
+            "as": "Assamese",
+            "si": "Sinhala",
+            
+            # East Asian Languages
+            "zh-cn": "Chinese Simplified",
+            "zh-tw": "Chinese Traditional",
+            "ja": "Japanese",
+            "ko": "Korean",
+            "vi": "Vietnamese",
+            "th": "Thai",
+            "lo": "Lao",
+            "km": "Khmer",
+            "my": "Burmese",
+            
+            # Southeast Asian Languages
+            "id": "Indonesian",
+            "ms": "Malay",
+            "tl": "Filipino",
+            
+            # Middle Eastern & African Languages
+            "ar": "Arabic",
+            "he": "Hebrew",
+            "fa": "Persian",
+            "sw": "Swahili",
+            "yo": "Yoruba",
+            "ig": "Igbo",
+            "am": "Amharic",
+            "ha": "Hausa",
+            
+            # American Languages
+            "pt": "Portuguese",
+            
+            # Additional major languages
+            "af": "Afrikaans",
+            "sq": "Albanian",
+            "hy": "Armenian",
+            "az": "Azerbaijani",
+            "be": "Belarusian",
+            "bs": "Bosnian",
+            "ca": "Catalan",
+            "ceb": "Cebuano",
+            "ny": "Chichewa",
+            "co": "Corsican",
+            "cy": "Welsh",
+            "eo": "Esperanto",
+            "eu": "Basque",
+            "fon": "Fon",
+            "fy": "Frisian",
+            "gl": "Galician",
+            "ka": "Georgian",
+            "gn": "Guarani",
+            "haw": "Hawaiian",
+            "hu": "Hungarian",
+            "is": "Icelandic",
+            "ig": "Igbo",
+            "ga": "Irish",
+            "jv": "Javanese",
+            "kk": "Kazakh",
+            "rw": "Kinyarwanda",
+            "ku": "Kurdish",
+            "ky": "Kyrgyz",
+            "ln": "Lingala",
+            "lt": "Lithuanian",
+            "lb": "Luxembourgish",
+            "mk": "Macedonian",
+            "mg": "Malagasy",
+            "mt": "Maltese",
+            "mi": "Maori",
+            "mn": "Mongolian",
+            "ne": "Nepali",
+            "ps": "Pashto",
+            "pl": "Polish",
+            "qu": "Quechua",
+            "sm": "Samoan",
+            "gd": "Scottish Gaelic",
+            "st": "Sesotho",
+            "sn": "Shona",
+            "sd": "Sindhi",
+            "sk": "Slovak",
+            "sl": "Slovenian",
+            "so": "Somali",
+            "su": "Sundanese",
+            "tg": "Tajik",
+            "tt": "Tatar",
+            "te": "Telugu",
+            "uk": "Ukrainian",
+            "uz": "Uzbek",
+            "cy": "Welsh",
+            "xh": "Xhosa",
+            "yi": "Yiddish",
+            "yo": "Yoruba",
+            "zu": "Zulu",
+        }
+        lang_name = language_names.get(lang_code, "English")
+        return lang_code, lang_name
+    except Exception as e:
+        print(f"DEBUG: Language detection failed: {e}")
+        return "en", "English"
 
 
 class ChatConsumer(AsyncWebsocketConsumer):
@@ -217,7 +400,6 @@ class ChatConsumer(AsyncWebsocketConsumer):
         user_images = data.get("images", [])
         # user_voice is already set from bytes or json above
 
-
         height=data.get('height')
         width=data.get('width')
         num_images=data.get('num_images')
@@ -245,6 +427,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
         voice_url = None
         db_voice_path = None
+        
         if user_voice:
              print(f"DEBUG: Processing user voice input: {str(user_voice)[:100]}...")
              audio_result = await sync_to_async(download_and_store_audio)(user_voice)
@@ -264,17 +447,25 @@ class ChatConsumer(AsyncWebsocketConsumer):
                             api_key=model_api_key
                         )
                         
+                        print(f"DEBUG: Transcription response received: {transcription}")
+                        
                         if transcription and transcription.get("text"):
                             voice_text = transcription["text"]
                             print(f"DEBUG: Transcription Success (OpenAI): {voice_text}")
+                            
                             if not message_content:
                                 message_content = voice_text
                             else:
                                 message_content = f"{message_content}\n(Voice: {voice_text})"
                         elif transcription and transcription.get("error"):
                              print(f"DEBUG: Transcription Error: {transcription['error']}")
+                             await self.send_json_with_credits({"type": "error", "message": f"Voice transcription failed: {transcription['error']}"})
+                        else:
+                             print(f"DEBUG: Transcription response missing text: {transcription}")
+                             await self.send_json_with_credits({"type": "error", "message": "Voice transcription returned empty response"})
                      except Exception as te:
                         print(f"DEBUG: Auto-transcription failed: {te}")
+                        await self.send_json_with_credits({"type": "error", "message": f"Voice transcription error: {str(te)}"})
                  else:
                      print(f"DEBUG: Skipping transcription for non-OpenAI provider: {provider}")
 
@@ -322,6 +513,17 @@ class ChatConsumer(AsyncWebsocketConsumer):
         if model_type == "chat" and not message_content and not user_images and not user_voice:
             await self.send_json_with_credits({"type": "error", "message": "Please type a message to receive assistance."})
             return
+        
+        # Ensure language variables exist (default to English)
+        detected_language = locals().get('detected_language', "en")
+        detected_language_name = locals().get('detected_language_name', "English")
+
+        # Detect language from message content if not already detected from voice
+        if message_content and detected_language == "en":
+            # detect_text_language may not be present if language detection was removed; guard call
+            if 'detect_text_language' in globals():
+                detected_language, detected_language_name = await sync_to_async(detect_text_language)(message_content)
+                print(f"DEBUG: Detected language from text: {detected_language_name} ({detected_language})")
 
         # provider is already defined above
 
@@ -364,7 +566,6 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 
             else:
                 try:
-                    
                     ai_response = await gemini_response(
                         message=message_content,
                         model_id=model_id, 
@@ -374,8 +575,10 @@ class ChatConsumer(AsyncWebsocketConsumer):
                         summary=session_data.get("summary",""),
                         num_images=num_images,
                         base_cost=base_cost,
-                        model_type=model_type
+                        model_type=model_type,
+                        detected_language=detected_language_name
                     )
+
                     if ai_response:
                         raw_images = ai_response.get("images", [])
                         final_images = []
@@ -432,7 +635,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
                             base_cost=base_cost
                         )
                     else:
-                        ai_response = await gpt_response(message=message_content,model_id=model_id,api_key=api_key,user_id=self.user.id,images_data_list=user_images,audio_data=voice_url,summary=session_data.get("summary"),num_images=num_images,base_cost=base_cost,duration=duration,height=height,width=width,aspect_ratio=aspect_ratio)
+                        ai_response = await gpt_response(message=message_content,model_id=model_id,api_key=api_key,user_id=self.user.id,images_data_list=user_images,audio_data=voice_url,summary=session_data.get("summary"),num_images=num_images,base_cost=base_cost,duration=duration,height=height,width=width,aspect_ratio=aspect_ratio,detected_language=detected_language_name)
+
 
                     
                     if ai_response:
@@ -451,25 +655,11 @@ class ChatConsumer(AsyncWebsocketConsumer):
                         
                         # --- GENERATE AI VOICE IF USER SENT VOICE ---
                         ai_voice_db_path = None
-                        if voice_url and resp_content:
-                            try:
-                                from .text_to_speech.text_to_speech import text_to_sound
-                                # Generate speech from AI text response
-                                raw_ai_voice = await database_sync_to_async(text_to_sound)(
-                                    model_id="text_to_speech",
-                                    api_key=api_key, 
-                                    user_id=self.user.id,
-                                    base_cost=base_cost,
-                                    prompt=resp_content,
-                                    voice_id="Wise_Woman"
-                                )
-                                # Save it locally
-                                if raw_ai_voice:
-                                    ai_voice_result = await sync_to_async(download_and_store_audio)(raw_ai_voice)
-                                    if ai_voice_result:
-                                        ai_voice_db_path = ai_voice_result.get("relative_path")
-                            except Exception as v_err:
-                                print(f"DEBUG: Failed to generate AI voice: {v_err}")
+                        
+                        resp_content = ai_response.get("text") or ai_response.get("content") or ai_response.get("error") or ""
+                        
+                        # AI responds with text only (no voice generation)
+                        ai_voice_db_path = None
                         
                         # Safety fallback if somehow both are empty
                         if not resp_content and not final_images and not raw_images:
@@ -967,4 +1157,6 @@ class ChatConsumer(AsyncWebsocketConsumer):
             await self.send_json_with_credits({"type": "error", "message": f"Unsupported provider: {provider}"})
       
     async def disconnect(self, close_code):
-        await self.channel_layer.group_discard(self.room_group_name ,self.channel_name)
+        # Only discard from group if room_group_name was set (connection was authenticated)
+        if hasattr(self, 'room_group_name'):
+            await self.channel_layer.group_discard(self.room_group_name, self.channel_name)

@@ -9,7 +9,8 @@ from django.conf import settings
 from pathlib import Path
 
 
-def transcribe_audio_with_whisper(audio_url: str, api_key: str = None) -> dict:
+def transcribe_audio_with_whisper(audio_url: str, api_key: str = None, language: str = None) -> dict:
+
     """
     Transcribe audio file to text using OpenAI Whisper API
     
@@ -51,10 +52,14 @@ def transcribe_audio_with_whisper(audio_url: str, api_key: str = None) -> dict:
                 transcript = client.audio.transcriptions.create(
                     model="whisper-1",
                     file=audio_file,
-                    response_format="text"
+                    language=language
                 )
+
             
-            return {"text": transcript.strip(), "error": None}
+            # Extract text from response
+            text = transcript.text if hasattr(transcript, 'text') else str(transcript)
+            
+            return {"text": text.strip(), "error": None}
         
         # Handle external URLs - download first
         elif audio_url.startswith('http://') or audio_url.startswith('https://'):
@@ -82,9 +87,13 @@ def transcribe_audio_with_whisper(audio_url: str, api_key: str = None) -> dict:
                     transcript = client.audio.transcriptions.create(
                         model="whisper-1",
                         file=audio_file,
-                        response_format="text"
+                        language=language
                     )
-                result = {"text": transcript.strip(), "error": None}
+
+                
+                # Extract text from response
+                text = transcript.text if hasattr(transcript, 'text') else str(transcript)
+                result = {"text": text.strip(), "error": None}
             finally:
                 # Clean up temp file
                 if os.path.exists(temp_path):
