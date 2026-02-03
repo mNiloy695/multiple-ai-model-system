@@ -6,6 +6,7 @@ import time
 from django.contrib.auth import get_user_model
 import base64
 from django.conf import settings
+from django.utils.translation import gettext as _
 
 User=get_user_model()
 
@@ -47,20 +48,20 @@ def image_to_3d(model_id,api_key,user_id,images,base_cost):
     print("Hello from WaveSpeedAI!")
 
     if model_id !="tripo3d/v2.5/image-to-3d":
-        return {"error":"This model is not allow"}
+        return {"error":_("This model is not allow")}
     
     try:
         user=User.objects.select_related("creditaccount").get(id=user_id)
 
     except User.DoesNotExist:
-        return {"error":"User not found"}
+        return {"error":_("User not found")}
     
     try:
         user_account=user.creditaccount
         if user_account.credits<base_cost:
-            raise ValueError("Insufficient credits to perform this operation.")
+            raise ValueError(_("Insufficient credits to perform this operation."))
     except CreditAccount.DoesNotExist:
-        return {"error":"Invalid user ID"}
+        return {"error":_("Invalid user ID")}
     
     
     API_KEY = api_key
@@ -82,7 +83,7 @@ def image_to_3d(model_id,api_key,user_id,images,base_cost):
         print(f"Task submitted successfully. Request ID: {request_id}")
     else:
         print(f"Error: {response.status_code}, {response.text}")
-        raise Exception(f"Submit failed {response.status_code}: {response.text}")
+        raise Exception(_("Submit failed {} {}: {}").format(response.status_code, response.reason, response.text))
     
     
 

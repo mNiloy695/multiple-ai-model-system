@@ -12,20 +12,17 @@ from django.db import transaction
 from ..track_used_word_subscription import trackUsedWords
 import base64
 from django.conf import settings
-
+from django.utils.translation import gettext as _
 User=get_user_model()
 
 def get_image_as_base64(url):
-    """
-    Converts an image URL (local or remote) to a base64 data URI.
-    """
     if not url:
         return None
     if url.startswith("data:"):
         return url
         
     try:
-        if (settings.BASE_URL and settings.BASE_URL in url) or "10.10.13.75" in url or "localhost" in url:
+        if (settings.BASE_URL and settings.BASE_URL in url) or "10.10.13.60" in url or "localhost" in url:
             media_url = settings.MEDIA_URL
             if media_url in url:
                 relative_path = url.split(media_url)[-1]
@@ -52,23 +49,23 @@ def  image_upscaler_wavespeed_ai(model_id,api_key,user_id,base_cost,image_url,ta
     API_KEY = api_key
 
     if model_id !="wavespeed-ai/flashvsr":
-        # return {"error":'Image upscaler only support wavespeed-ai/flashvsr model'}
-        raise ValueError("Image upscaler only support wavespeed-ai/flashvsr model")
+        
+        raise ValueError(_("Image upscaler only support wavespeed-ai/flashvsr model"))
     if target_resolution not in ['1080p','720p','2k','4k']:
-        raise ValueError("The targeted resulation can be 1080p/720p/2k/4k")
+        raise ValueError(_("The targeted resulation can be 1080p/720p/2k/4k"))
     
 
     try:
         user=User.objects.get(id=user_id)
     except User.DoesNotExist:
-        return {"error":"User Id not Found"}
+        return {"error":_("User Id not Found")}
     
     try:
         user_account=user.creditaccount
         if user_account.credits<base_cost:
-            raise ValueError("Insufficient credits to perform this operation.")
+            raise ValueError(_("Insufficient credits to perform this operation."))
     except CreditAccount.DoesNotExist:
-        return {"error":"Invalid user ID"}
+        return {"error":_("Invalid user ID")}
 
 
     url = f"https://api.wavespeed.ai/api/v3/{model_id}"
@@ -83,6 +80,7 @@ def  image_upscaler_wavespeed_ai(model_id,api_key,user_id,base_cost,image_url,ta
     #     raise ValueError(f"Invalid target resolution {target_resolution}. Available options: {possible_resolutions}")
     
     processed_image = get_image_as_base64(image_url)
+    
     payload = {
         "video": processed_image,
         "target_resolution": target_resolution if target_resolution else "4k"
@@ -97,20 +95,18 @@ def  image_upscaler_wavespeed_ai(model_id,api_key,user_id,base_cost,image_url,ta
         print(f"Task submitted successfully. Request ID: {request_id}")
     else:
         print(f"Error: {response.status_code}, {response.text}")
-        raise Exception(f"Submit failed {response.status_code}: {response.text}")
+        raise Exception(_(f"Submit failed {response.status_code}: {response.text}"))
     
     url = f"https://api.wavespeed.ai/api/v3/predictions/{request_id}/result"
     headers = {"Authorization": f"Bearer {API_KEY}"}
 
     if response.status_code != 200:
-        raise Exception(f"Submit failed {response.status_code}: {response.text}")
+        raise Exception(_("Submit failed {} {}: {}").format(response.status_code, response.reason, response.text))
     
-
-    # Poll for results
     while True:
         response = requests.get(url, headers=headers)
         if response.status_code != 200:
-            raise Exception(f"Polling error {response.status_code}: {response.text}")
+            raise Exception(_("Polling error {} {}: {}").format(response.status_code, response.reason, response.text))
         if response.status_code == 200:
             result = response.json()["data"]
             status = result["status"]
@@ -126,14 +122,14 @@ def  image_upscaler_wavespeed_ai(model_id,api_key,user_id,base_cost,image_url,ta
                         user=User.objects.select_for_update().get(id=user_id)
                         print("The previous token_used is ............",user.total_token_used)
                     except User.DoesNotExist:
-                        raise ValueError("User Id not Found")
+                        raise ValueError(_("User Id not Found"))
                     try: 
                         user_account=CreditAccount.objects.select_for_update().get(user__id=user_id)
                     except CreditAccount.DoesNotExist:
-                        raise ValueError("Invalid user ID")
+                        raise ValueError(_("Invalid user ID"))
                                      
                     if user_account.credits<base_cost:
-                        raise ValueError("Insufficient credits to perform this operation.")
+                        raise ValueError(_("Insufficient credits to perform this operation."))
                     
                     user_account.credits-=int(base_cost)
                     

@@ -9,6 +9,7 @@ from asgiref.sync import sync_to_async
 
 from accounts.models import CreditAccount
 from ..track_used_word_subscription import trackUsedWords
+from django.utils.translation import gettext as _
 
 User = get_user_model()
 import asyncio
@@ -27,7 +28,7 @@ async def call_openai_video_model(
 
     
     if not prompt or prompt.strip() == "":
-        return {"error": "Prompt cannot be empty"}
+        return {"error": _("Prompt cannot be empty")}
     
     try:
         duration = str(duration)
@@ -35,10 +36,10 @@ async def call_openai_video_model(
         duration = "4"
     
     if duration not in ["4", "8", "12"]:
-        return {"error": "Invalid duration. Allowed values are 4, 8, or 12 second's."}
+        return {"error": _("Invalid duration. Allowed values are 4, 8, or 12 second's.")}
     
     if model_id not in ["sora-2", "sora-2-pro"]:
-        return {"error": "Invalid model ID. Contact admin."}
+        return {"error": _("Invalid model ID. Contact admin.")}
     
     # Allow higher-resolution options for both models. Apply a multiplier for high-res to account
     # for greater compute cost. We choose a slightly lower multiplier for `sora-2` and a higher
@@ -51,7 +52,7 @@ async def call_openai_video_model(
 
     # Validate requested resolution
     if f"{width}x{height}" not in possible_resolutions:
-        return {"error": f"Invalid resolution. Allowed resolutions are: {', '.join(possible_resolutions)}"}
+        return {"error": _("Invalid resolution. Allowed resolutions are: {}").format(', '.join(possible_resolutions))}
 
     # Determine if this is a high-resolution request
     high_res_sizes = {"1024x1792", "1792x1024"}
@@ -76,11 +77,11 @@ async def call_openai_video_model(
         user = await sync_to_async(User.objects.get)(id=user_id)
         credit_account = await sync_to_async(CreditAccount.objects.get)(user=user)
     except Exception:
-        return {"error": "User or Credit Account not found"}
+        return {"error": _("User or Credit Account not found")}
     
     total_cost = Decimal(str(base_cost)) * Decimal(duration)
     if credit_account.credits < total_cost:
-        return {"error": "Insufficient credits to perform this operation."}
+        return {"error": _("Insufficient credits to perform this operation.")}
     
     # CREATE VIDEO JOB (returns job_id, not video URL)
     try:
@@ -92,7 +93,7 @@ async def call_openai_video_model(
         )
     except Exception as e:
         print("Error generating video with OpenAI:", e)
-        return {"error": f"AI error: {str(e)}"}
+        return {"error": _("AI error: {}").format(str(e))}
     
     # EXTRACT JOB ID from response
     job_id = None
@@ -103,12 +104,12 @@ async def call_openai_video_model(
     
     if not job_id:
         print("DEBUG: No job ID found. Response:", response.__dict__ if hasattr(response, "__dict__") else response)
-        return {"error": "Video job created but no job ID found in response."}
+        return {"error": _("Video job created but no job ID found in response.")}
     
     print(f"Video job created: {job_id}")
     
-    #  POLL FOR COMPLETION (with exponential backoff)
-    max_wait = 600  # 10 minutes max
+    
+    max_wait = 600  
     elapsed = 0
     poll_interval = 5  # start at 5 seconds
     
@@ -117,7 +118,7 @@ async def call_openai_video_model(
             status_response = await client.videos.retrieve(job_id)
         except Exception as e:
             print(f"Error retrieving video status: {e}")
-            return {"error": f"Failed to check video status: {str(e)}"}
+            return {"error": _("Failed to check video status: {}").format(str(e))}
         
         status = getattr(status_response, "status", None)
         progress = getattr(status_response, "progress", 0)
@@ -160,7 +161,7 @@ async def call_openai_video_model(
                 return {"error": f"Credit deduction failed: {str(e)}"}
             
             return {
-                "text": f"Video generated successfully ({duration}s).",
+                "text": _("Video generated successfully {}.").format(f"({duration}s)"),
                 "videos": [video_url],  # Return accessible URL
                 "images":[video_url],
                 "filename": video_filename,
@@ -171,7 +172,7 @@ async def call_openai_video_model(
         elif status == "failed":
             print(f"Video generation failed.")
             error_msg = getattr(status_response, "error", "Unknown error")
-            return {"error": f"Video generation failed: {error_msg}"}
+            return {"error": _("Video generation failed: {}").format(error_msg)}
         
         elif status in ["queued", "in_progress"]:
             # Still processing, wait and retry
@@ -181,9 +182,9 @@ async def call_openai_video_model(
             elapsed += poll_interval
             poll_interval = min(poll_interval * 1.5, 30)  # exponential backoff up to 30s
         else:
-            return {"error": f"Unknown job status: {status}"}
+            return {"error": _("Unknown job status: {}").format(status)}
     
-    return {"error": "Video generation timeout. Job took too long to complete."}
+    return {"error": _("Video generation timeout. Job took too long to complete.")}
     
 # =========================
 

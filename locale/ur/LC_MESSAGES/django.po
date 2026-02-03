@@ -1,0 +1,518 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-02-03 10:48+0000\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: Urdu <ur@li.org>\n"
+"Language: ur\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: AIModelBackend/settings.py:139
+msgid "English"
+msgstr "انگریزی"
+
+#: AIModelBackend/settings.py:140
+msgid "Mandarin Chinese"
+msgstr "مینڈرین چینی"
+
+#: AIModelBackend/settings.py:141
+msgid "Hindi"
+msgstr "ہندی"
+
+#: AIModelBackend/settings.py:142
+msgid "Spanish"
+msgstr "ہسپانوی"
+
+#: AIModelBackend/settings.py:143
+msgid "Arabic"
+msgstr "عربی"
+
+#: AIModelBackend/settings.py:144
+msgid "French"
+msgstr "فرانسیسی"
+
+#: AIModelBackend/settings.py:145
+msgid "Bengali"
+msgstr "بنگالی"
+
+#: AIModelBackend/settings.py:146
+msgid "Portuguese"
+msgstr "پرتگالی"
+
+#: AIModelBackend/settings.py:147
+msgid "Russian"
+msgstr "روسی"
+
+#: AIModelBackend/settings.py:148
+msgid "Urdu"
+msgstr "اردو"
+
+#: AIModelBackend/settings.py:149
+msgid "Indonesian"
+msgstr "انڈونیشیائی"
+
+#: AIModelBackend/settings.py:150
+msgid "German"
+msgstr "جرمن"
+
+#: AIModelBackend/settings.py:151
+msgid "Japanese"
+msgstr "جاپانی"
+
+#: AIModelBackend/settings.py:152
+msgid "Marathi"
+msgstr "مراٹھی"
+
+#: AIModelBackend/settings.py:153
+msgid "Telugu"
+msgstr "تیلگو"
+
+#: AIModelBackend/settings.py:154
+msgid "Turkish"
+msgstr "ترکی"
+
+#: AIModelBackend/settings.py:155
+msgid "Tamil"
+msgstr "تامل"
+
+#: AIModelBackend/settings.py:156
+msgid "Vietnamese"
+msgstr "ویتنامی"
+
+#: AIModelBackend/settings.py:157
+msgid "Cantonese"
+msgstr "کینٹونیز"
+
+#: AIModelBackend/settings.py:158
+msgid "Swahili"
+msgstr "سواحلی"
+
+#: accounts/serializers.py:17
+msgid "Password and Confirm Password are required"
+msgstr "پاس ورڈ اور اس کی تصدیق درکار ہے"
+
+#: accounts/serializers.py:19
+msgid "Password and Confirm Password does not match"
+msgstr "پاس ورڈ اور اس کی تصدیق مماثل نہیں ہے"
+
+#: accounts/serializers.py:22
+msgid "Username is required"
+msgstr "صارف کا نام درکار ہے"
+
+#: accounts/serializers.py:29
+msgid "Email is already in use"
+msgstr "ای میل پہلے ہی زیر استعمال ہے"
+
+#: accounts/serializers.py:31
+msgid "Username is already in use"
+msgstr "صارف کا نام پہلے ہی زیر استعمال ہے"
+
+#: accounts/serializers.py:54
+msgid "User with this email does not exist"
+msgstr "اس ای میل کے ساتھ صارف موجود نہیں ہے"
+
+#: accounts/serializers.py:58
+msgid "Invalid verification code"
+msgstr "غلط تصدیقی کوڈ"
+
+#: accounts/serializers.py:62
+msgid "Verification code has expired"
+msgstr "تصدیقی کوڈ کی مدت ختم ہو چکی ہے"
+
+#: accounts/serializers.py:78 accounts/serializers.py:81
+msgid "Invalid email or password"
+msgstr "غلط ای میل یا پاس ورڈ"
+
+#: accounts/serializers.py:84
+msgid "Account is not activated"
+msgstr "اکاؤنٹ فعال نہیں ہے"
+
+#: accounts/serializers.py:106
+msgid "Email is required."
+msgstr "ای میل درکار ہے۔"
+
+#: accounts/serializers.py:120
+msgid "Email, code, and password are required."
+msgstr "ای میل، کوڈ، اور پاس ورڈ درکار ہیں۔"
+
+#: accounts/views.py:36
+msgid ""
+"User registered successfully. Please check your email for the verification "
+"code."
+msgstr "صارف کامیابی سے رجسٹر ہو گیا۔ براہ کرم تصدیقی کوڈ کے لیے اپنی ای میل چیک کریں۔"
+
+#: accounts/views.py:49
+msgid "Account activated successfully."
+msgstr "اکاؤنٹ کامیابی سے فعال ہو گیا۔"
+
+#: accounts/views.py:93
+msgid "User logged out successfully."
+msgstr "صارف کامیابی سے لاگ آؤٹ ہو گیا۔"
+
+#: accounts/views.py:141
+msgid "Email not found in Google token"
+msgstr "گوگل ٹوکن میں ای میل نہیں ملی"
+
+#: accounts/views.py:168
+msgid "No account found with this email."
+msgstr "اس ای میل کے ساتھ کوئی اکاؤنٹ نہیں ملا۔"
+
+#: accounts/views.py:182
+msgid "OTP sent successfully to your email"
+msgstr "او ٹی پی (OTP) آپ کی ای میل پر کامیابی سے بھیج دیا گیا ہے"
+
+#: accounts/views.py:201
+msgid "User not available on this email"
+msgstr "اس ای میل پر صارف دستیاب نہیں ہے"
+
+#: accounts/views.py:205
+msgid "Invalid OTP"
+msgstr "غلط او ٹی پی (OTP)"
+
+#: accounts/views.py:207
+msgid "OTP expired"
+msgstr "او ٹی پی (OTP) کی مدت ختم ہو گئی"
+
+#: accounts/views.py:217
+msgid "Password reset successfully"
+msgstr "پاس ورڈ کامیابی سے ری سیٹ ہو گیا"
+
+#: accounts/views.py:307 ai_model/google_func.py:129
+msgid "Credit account not found."
+msgstr "کریڈٹ اکاؤنٹ نہیں ملا۔"
+
+#: ads_rewards/serializers.py:14
+msgid "Reward must be greater than zero"
+msgstr "انعام صفر سے زیادہ ہونا چاہیے"
+
+#: ai_model/consumers.py:393
+msgid ""
+"You have exceeded your daily limit. Please watch ads or buy a subscription "
+"for more requests."
+msgstr "آپ نے اپنی روزانہ کی حد پوری کر لی ہے۔ مزید درخواستوں کے لیے براہ کرم اشتہارات دیکھیں یا سبسکرپشن خریدیں۔"
+
+#: ai_model/consumers.py:421
+msgid "no available session found"
+msgstr "کوئی دستیاب سیشن نہیں ملا"
+
+#: ai_model/consumers.py:463
+msgid "Voice transcription failed: {}"
+msgstr "وائس ٹرانسکرپشن ناکام ہو گئی: {}"
+
+#: ai_model/consumers.py:466
+msgid "Voice transcription returned empty response"
+msgstr "وائس ٹرانسکرپشن نے خالی جواب دیا"
+
+#: ai_model/consumers.py:469
+msgid "Voice transcription error: {}"
+msgstr "وائس ٹرانسکرپشن میں خرابی: {}"
+
+#: ai_model/consumers.py:478
+msgid "Unknown media link. Please select an image or video."
+msgstr "نامعلوم میڈیا لنک۔ براہ کرم تصویر یا ویڈیو منتخب کریں۔"
+
+#: ai_model/consumers.py:515
+msgid "Please type a message to receive assistance."
+msgstr "مدد حاصل کرنے کے لیے براہ کرم ایک پیغام ٹائپ کریں۔"
+
+#: ai_model/consumers.py:544
+msgid ""
+"Only free model is available for free users. Please upgrade/buy coins to "
+"access premium models."
+msgstr "مفت صارفین کے لیے صرف مفت ماڈل دستیاب ہے۔ پریمیم ماڈلز تک رسائی کے لیے براہ کرم اپ گریڈ کریں یا کوائنز خریدیں۔"
+
+#: ai_model/consumers.py:600 ai_model/consumers.py:811
+#: ai_model/consumers.py:845 ai_model/consumers.py:891
+msgid "Error: {}"
+msgstr "خرابی: {}"
+
+#: ai_model/consumers.py:614 ai_model/consumers.py:734
+msgid ""
+"Only free model is available for free users. Please upgrade to access "
+"premium models."
+msgstr "مفت صارفین کے لیے صرف مفت ماڈل دستیاب ہے۔ پریمیم ماڈلز تک رسائی کے لیے براہ کرم اپ گریڈ کریں۔"
+
+#: ai_model/consumers.py:768
+msgid "This model does not support chat"
+msgstr "یہ ماڈل چیٹ کو سپورٹ نہیں کرتا"
+
+#: ai_model/consumers.py:838 ai_model/download_video/download_veo_video.py:122
+msgid "Video generated successfully."
+msgstr "ویڈیو کامیابی سے تیار ہو گئی۔"
+
+#: ai_model/consumers.py:849
+msgid "Image tool requires an image. Please upload an image first."
+msgstr "امیج ٹول کے لیے تصویر درکار ہے۔ براہ کرم پہلے ایک تصویر اپ لوڈ کریں۔"
+
+#: ai_model/deepseek.py:48 ai_model/image_edit/image_edit.py:53
+#: ai_model/image_to_3d/image_to_3d.py:57
+#: ai_model/text_to_speech/text_to_speech.py:22
+msgid "User not found"
+msgstr "صارف نہیں ملا"
+
+#: ai_model/deepseek.py:63 ai_model/openai_func.py:123
+msgid "Credit account not found"
+msgstr "کریڈٹ اکاؤنٹ نہیں ملا"
+
+#: ai_model/deepseek.py:66
+msgid "Insufficient credits. Required: {}"
+msgstr "نا کافی کریڈٹ۔ درکار: {}"
+
+#: ai_model/deepseek.py:94
+msgid "Insufficient credits for any response."
+msgstr "کسی بھی جواب کے لیے نا کافی کریڈٹ۔"
+
+#: ai_model/deepseek.py:170
+msgid "Authentication failed: Invalid API key or configuration."
+msgstr "تصدیق ناکام ہو گئی: غلط API کی (key) یا کنفیگریشن۔"
+
+#: ai_model/deepseek.py:172
+msgid "API error. Please try again later."
+msgstr "API کی خرابی۔ براہ کرم بعد میں دوبارہ کوشش کریں۔"
+
+#: ai_model/deepseek.py:174
+msgid "System error occurred."
+msgstr "سسٹم میں خرابی واقع ہوئی ہے۔"
+
+#: ai_model/download_video/download_veo_video.py:35
+msgid "Insufficient credits"
+msgstr "نا کافی کریڈٹ"
+
+#: ai_model/download_video/download_veo_video.py:69
+#, python-brace-format
+msgid "Video generation timeout after {max_wait_time}s"
+msgstr "ویڈیو جنریشن کا وقت {max_wait_time} سیکنڈ کے بعد ختم ہو گیا"
+
+#: ai_model/download_video/download_veo_video.py:72
+#: ai_model/openai_video/openai_video.py:175
+msgid "Video generation failed: {}"
+msgstr "ویڈیو جنریشن ناکام ہو گئی: {}"
+
+#: ai_model/download_video/download_veo_video.py:76
+msgid "No videos generated"
+msgstr "کوئی ویڈیو تیار نہیں کی گئی"
+
+#: ai_model/download_video/download_veo_video.py:89
+msgid "Failed to extract video bytes"
+msgstr "ویڈیو بائٹس نکالنے میں ناکامی"
+
+#: ai_model/google_func.py:83
+msgid "User not found."
+msgstr "صارف نہیں ملا۔"
+
+#: ai_model/google_func.py:130
+#, python-brace-format
+msgid "Insufficient credits. Required: {charge_amount}"
+msgstr "نا کافی کریڈٹ۔ درکار: {charge_amount}"
+
+#: ai_model/google_func.py:150
+msgid "Insufficient credits for response."
+msgstr "جواب کے لیے نا کافی کریڈٹ۔"
+
+#: ai_model/google_func.py:184
+msgid "{} image(s) generated successfully."
+msgstr "{} تصویر (تصاویر) کامیابی سے تیار ہو گئیں۔"
+
+#: ai_model/google_func.py:185
+msgid "Failed to generate images."
+msgstr "تصاویر تیار کرنے میں ناکامی۔"
+
+#: ai_model/google_func.py:249
+msgid "Request failed. Please try again later."
+msgstr "درخواست ناکام ہو گئی۔ براہ کرم بعد میں دوبارہ کوشش کریں۔"
+
+#: ai_model/image_edit/image_edit.py:38
+#, python-brace-format
+msgid ""
+"Invalid target aspect_ratio {aspect_ratio}. Available options: {ASPECT_RATIO}"
+msgstr "غلط ٹارگٹ اسپیکٹ ریشو {aspect_ratio}۔ دستیاب اختیارات: {ASPECT_RATIO}"
+
+#: ai_model/image_edit/image_edit.py:41
+msgid "Invalid target output_format.Available options: 'png or jpeg'"
+msgstr "غلط ٹارگٹ آؤٹ پٹ فارمیٹ۔ دستیاب اختیارات: 'png' یا 'jpeg'"
+
+#: ai_model/image_edit/image_edit.py:44
+msgid "Invalid model Id .Available model is google/nano-banana/edit"
+msgstr "غلط ماڈل آئی ڈی۔ دستیاب ماڈل google/nano-banana/edit ہے"
+
+#: ai_model/image_edit/image_edit.py:47
+#: ai_model/text_to_speech/text_to_speech.py:14
+msgid "User id not found It's required"
+msgstr "یوزر آئی ڈی نہیں ملی۔ یہ درکار ہے"
+
+#: ai_model/image_edit/image_edit.py:58 ai_model/image_to_3d/image_to_3d.py:62
+#: ai_model/image_tool/image_tool.py:80
+#: ai_model/image_upscaler/image_upscaler.py:66
+#: ai_model/image_upscaler/image_upscaler.py:132
+#: ai_model/openai_video/openai_video.py:84
+#: ai_model/text_to_speech/text_to_speech.py:33
+#: ai_model/text_to_video/text_to_video.py:68
+msgid "Insufficient credits to perform this operation."
+msgstr "اس آپریشن کو انجام دینے کے لیے نا کافی کریڈٹ۔"
+
+#: ai_model/image_edit/image_edit.py:60 ai_model/image_to_3d/image_to_3d.py:64
+#: ai_model/image_tool/image_tool.py:82
+#: ai_model/image_upscaler/image_upscaler.py:68
+#: ai_model/image_upscaler/image_upscaler.py:129
+#: ai_model/text_to_speech/text_to_speech.py:35
+#: ai_model/text_to_video/text_to_video.py:70
+msgid "Invalid user ID"
+msgstr "غلط یوزر آئی ڈی"
+
+#: ai_model/image_edit/image_edit.py:104 ai_model/image_tool/image_tool.py:166
+#: ai_model/image_upscaler/image_upscaler.py:98
+#: ai_model/text_to_speech/text_to_speech.py:145
+#, python-brace-format
+msgid "Submit failed {response.status_code}: {response.text}"
+msgstr "جمع کرنا ناکام ہو گیا {response.status_code}: {response.text}"
+
+#: ai_model/image_to_3d/image_to_3d.py:51
+msgid "This model is not allow"
+msgstr "اس ماڈل کی اجازت نہیں ہے"
+
+#: ai_model/image_to_3d/image_to_3d.py:86
+#: ai_model/image_upscaler/image_upscaler.py:104
+msgid "Submit failed {} {}: {}"
+msgstr "جمع کرنا ناکام ہو گیا {} {}: {}"
+
+#: ai_model/image_tool/image_tool.py:71
+msgid "Image URL is required for image tool."
+msgstr "امیج ٹول کے لیے تصویر کا یو آر ایل (URL) درکار ہے۔"
+
+#: ai_model/image_tool/image_tool.py:75
+#: ai_model/image_upscaler/image_upscaler.py:61
+#: ai_model/image_upscaler/image_upscaler.py:125
+msgid "User Id not Found"
+msgstr "یوزر آئی ڈی نہیں ملی"
+
+#: ai_model/image_tool/image_tool.py:149
+#: ai_model/text_to_video/text_to_video.py:73
+#, python-brace-format
+msgid "Model ID {model_id} not supported."
+msgstr "ماڈل آئی ڈی {model_id} سپورٹ شدہ نہیں ہے۔"
+
+#: ai_model/image_upscaler/image_upscaler.py:53
+msgid "Image upscaler only support wavespeed-ai/flashvsr model"
+msgstr "امیج اپ اسکیلر صرف wavespeed-ai/flashvsr ماڈل کو سپورٹ کرتا ہے"
+
+#: ai_model/image_upscaler/image_upscaler.py:55
+msgid "The targeted resulation can be 1080p/720p/2k/4k"
+msgstr "ٹارگٹڈ ریزولوشن 1080p/720p/2k/4k ہو سکتی ہے"
+
+#: ai_model/image_upscaler/image_upscaler.py:109
+msgid "Polling error {} {}: {}"
+msgstr "پولنگ کی خرابی {} {}: {}"
+
+#: ai_model/openai_func.py:124
+msgid "Insufficient credits. Current balance: {}"
+msgstr "نا کافی کریڈٹ۔ موجودہ بیلنس: {}"
+
+#: ai_model/openai_func.py:145
+msgid "Insufficient credits to generate a response."
+msgstr "جواب تیار کرنے کے لیے نا کافی کریڈٹ۔"
+
+#: ai_model/openai_video/helpers.py:13
+msgid "Video content is empty"
+msgstr "ویڈیو کا مواد خالی ہے"
+
+#: ai_model/openai_video/helpers.py:19
+msgid "Video content must be bytes"
+msgstr "ویڈیو کا مواد بائٹس (bytes) میں ہونا چاہیے"
+
+#: ai_model/openai_video/helpers.py:55
+msgid "File write error: {}"
+msgstr "فائل لکھنے میں خرابی: {}"
+
+#: ai_model/openai_video/helpers.py:60
+msgid "Unexpected error saving video: {}"
+msgstr "ویڈیو محفوظ کرنے کے دوران غیر متوقع خرابی: {}"
+
+#: ai_model/openai_video/openai_video.py:31
+msgid "Prompt cannot be empty"
+msgstr "پرامپٹ خالی نہیں ہو سکتا"
+
+#: ai_model/openai_video/openai_video.py:39
+msgid "Invalid duration. Allowed values are 4, 8, or 12 second's."
+msgstr "غلط دورانیہ۔ اجازت یافتہ قدریں 4، 8، یا 12 سیکنڈ ہیں۔"
+
+#: ai_model/openai_video/openai_video.py:42
+msgid "Invalid model ID. Contact admin."
+msgstr "غلط ماڈل آئی ڈی۔ ایڈمن سے رابطہ کریں۔"
+
+#: ai_model/openai_video/openai_video.py:55
+msgid "Invalid resolution. Allowed resolutions are: {}"
+msgstr "غلط ریزولوشن۔ اجازت یافتہ ریزولوشنز یہ ہیں: {}"
+
+#: ai_model/openai_video/openai_video.py:80
+msgid "User or Credit Account not found"
+msgstr "صارف یا کریڈٹ اکاؤنٹ نہیں ملا"
+
+#: ai_model/openai_video/openai_video.py:96
+msgid "AI error: {}"
+msgstr "AI کی خرابی: {}"
+
+#: ai_model/openai_video/openai_video.py:107
+msgid "Video job created but no job ID found in response."
+msgstr "ویڈیو جاب بن گئی ہے لیکن جواب میں کوئی جاب آئی ڈی نہیں ملی۔"
+
+#: ai_model/openai_video/openai_video.py:121
+msgid "Failed to check video status: {}"
+msgstr "ویڈیو کی صورتحال چیک کرنے میں ناکامی: {}"
+
+#: ai_model/openai_video/openai_video.py:164
+msgid "Video generated successfully {}."
+msgstr "ویڈیو کامیابی سے تیار ہو گئی {}۔"
+
+#: ai_model/openai_video/openai_video.py:185
+msgid "Unknown job status: {}"
+msgstr "نامعلوم جاب کی صورتحال: {}"
+
+#: ai_model/openai_video/openai_video.py:187
+msgid "Video generation timeout. Job took too long to complete."
+msgstr "ویڈیو جنریشن کا وقت ختم ہو گیا۔ جاب مکمل ہونے میں بہت زیادہ وقت لگا۔"
+
+#: ai_model/serializers.py:15
+msgid "Base cost must be greater than 0 for image generating models."
+msgstr "تصویر تیار کرنے والے ماڈلز کے لیے بنیادی لاگت 0 سے زیادہ ہونی چاہیے۔"
+
+#: ai_model/text_to_speech/text_to_speech.py:17
+msgid "Text prompt is required and must be a string"
+msgstr "ٹیکسٹ پرامپٹ درکار ہے اور اسے سٹرنگ (string) ہونا چاہیے"
+
+#: ai_model/text_to_video/text_to_video.py:61
+msgid "Invalid user account ID"
+msgstr "غلط یوزر اکاؤنٹ آئی ڈی"
+
+#: ai_model/text_to_video/text_to_video.py:109
+#: ai_model/video_effect/video_effect.py:129
+#, python-brace-format
+msgid "Submit failed {response_status_code}: {response_text}"
+msgstr "جمع کرنا ناکام ہو گیا {response_status_code}: {response_text}"
+
+#: ai_model/text_to_video/text_to_video.py:118
+#, python-brace-format
+msgid "Polling error {poll_resp_status_code}"
+msgstr "پولنگ کی خرابی {poll_resp_status_code}"
+
+#: ai_model/text_to_video/text_to_video.py:126
+msgid "Video generation failed"
+msgstr "ویڈیو جنریشن ناکام ہو گئی"
+
+#: ai_model/views.py:91
+msgid "Session type is required"
+msgstr "سیشن کی قسم درکار ہے"
+
+#: ai_model/views.py:110
+msgid "No {} active AI models available."
+msgstr "کوئی فعال {} AI ماڈلز دستیاب نہیں ہیں۔"

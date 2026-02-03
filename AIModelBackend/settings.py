@@ -125,17 +125,60 @@ CELERY_TIMEZONE = 'UTC'
 # CELERY_TASK_ALWAYS_EAGER = True
 #stripe 
 
+
+#localization seetings 
+
+from django.utils.translation import gettext_lazy as _
+USE_I18N = True
+USE_I10N = True
+USE_TZ = True
+TIME_ZONE = 'UTC'
+LANGUAGE_CODE = 'en-us'
+
+LANGUAGES = [
+    ('en', _('English')),
+    ('zh', _('Mandarin Chinese')),
+    ('hi', _('Hindi')),
+    ('es', _('Spanish')),
+    ('ar', _('Arabic')),
+    ('fr', _('French')),
+    ('bn', _('Bengali')),
+    ('pt', _('Portuguese')),
+    ('ru', _('Russian')),
+    ('ur', _('Urdu')),
+    ('id', _('Indonesian')),
+    ('de', _('German')),
+    ('ja', _('Japanese')),
+    ('mr', _('Marathi')),
+    ('te', _('Telugu')),
+    ('tr', _('Turkish')),
+    ('ta', _('Tamil')),
+    ('vi', _('Vietnamese')),
+    ('zh-HK', _('Cantonese')),
+    ('sw', _('Swahili')),
+]
+
 STRIPE_SECRET_KEY =config("STRIPE_SECRET_KEY")
 WEBHOOK_SECRET=config("WEBHOOK_SECRET_KEY")
+
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     "whitenoise.middleware.WhiteNoiseMiddleware",
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.locale.LocaleMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+]
+
+#tells django where to find the translation files
+# import os
+# BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+LOCALE_PATHS = [
+    BASE_DIR / "locale",
 ]
 STORAGES = {
     "default": {
@@ -255,13 +298,7 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
-
-USE_I18N = True
-
-USE_TZ = True
 
 
 # Static files (CSS, JavaScript, Images)
@@ -275,3 +312,5 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+

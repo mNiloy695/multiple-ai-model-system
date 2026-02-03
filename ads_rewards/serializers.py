@@ -1,5 +1,6 @@
 from .models import RewardsHistory
 from rest_framework import serializers
+from django.utils.translation import gettext as _
 class RewardsHistorySerializer(serializers.ModelSerializer):
     class Meta:
         model=RewardsHistory
@@ -10,7 +11,7 @@ class RewardsHistorySerializer(serializers.ModelSerializer):
         reward=attrs.get('reward',0)
         
         if reward<=0:
-            raise serializers.ValidationError("Reward must be grater than zero")
+            raise serializers.ValidationError(_("Reward must be greater than zero"))
         return attrs
 
     

@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
+from django.utils.translation import gettext as _
 User=get_user_model()
 
 class RegisterSerializer(serializers.ModelSerializer):
@@ -13,21 +14,21 @@ class RegisterSerializer(serializers.ModelSerializer):
         password=  attrs.get('password')
         confirm_password= attrs.get('confirm_password')
         if password is None or confirm_password is None:
-            raise serializers.ValidationError("Password and Confirm Password are required")
+            raise serializers.ValidationError(_("Password and Confirm Password are required"))
         if password != confirm_password:
-            raise serializers.ValidationError("Password and Confirm Password does not match")
+            raise serializers.ValidationError(_("Password and Confirm Password does not match"))
         username=attrs.get('username')
         if username is None:
-            raise serializers.ValidationError("Username is required")
+            raise serializers.ValidationError(_("Username is required"))
         
         # if len(password) < 8:
         #     raise serializers.ValidationError("Password must be at least 8 characters long")
         email= attrs.get('email')
 
         if User.objects.filter(email=email).exists():
-            raise serializers.ValidationError("Email is already in use")
+            raise serializers.ValidationError(_("Email is already in use"))
         if User.objects.filter(username=attrs.get('username')).exists():
-            raise serializers.ValidationError("Username is already in use")
+            raise serializers.ValidationError(_("Username is already in use"))
                 
         
         return attrs
@@ -50,15 +51,15 @@ class UserAccountActivationSerializer(serializers.Serializer):
         try:
             user= User.objects.get(email=email)
         except User.DoesNotExist:
-            raise serializers.ValidationError("User with this email does not exist")
+            raise serializers.ValidationError(_("User with this email does not exist"))
         
         from .models import OTP
         if not OTP.objects.filter(user=user, code=code, type='registration').exists():
-            raise serializers.ValidationError("Invalid verification code")
+            raise serializers.ValidationError(_("Invalid verification code"))
         else:
             otp= OTP.objects.get(user=user, code=code, type='registration')
             if otp.is_expired():
-                raise serializers.ValidationError("Verification code has expired")
+                raise serializers.ValidationError(_("Verification code has expired"))
         
         attrs['user']= user
         return attrs
@@ -74,13 +75,13 @@ class LoginSerializer(serializers.Serializer):
         try:
             user= User.objects.get(email=email)
         except User.DoesNotExist:
-            raise serializers.ValidationError("Invalid email or password")
+            raise serializers.ValidationError(_("Invalid email or password"))
         
         if not user.check_password(password):
-            raise serializers.ValidationError("Invalid email or password")
+            raise serializers.ValidationError(_("Invalid email or password"))
         
         if not user.is_active:
-            raise serializers.ValidationError("Account is not activated")
+            raise serializers.ValidationError(_("Account is not activated"))
         
         attrs['user']= user
         return attrs
@@ -102,7 +103,7 @@ class ForgotPasswordSerializer(serializers.Serializer):
     def validate(self, attrs):
         email = attrs.get('email')
         if not email:
-            raise serializers.ValidationError({"email": "Email is required."})
+            raise serializers.ValidationError({"email": _("Email is required.")})
         return attrs
 
 class ResetPasswordSerializer(serializers.Serializer):
@@ -116,7 +117,7 @@ class ResetPasswordSerializer(serializers.Serializer):
         password=attrs.get('password')
 
         if any(x is None for x in [email,code,password]):
-            raise serializers.ValidationError("Email, code, and password are required.")
+            raise serializers.ValidationError(_("Email, code, and password are required."))
         return attrs
 
 

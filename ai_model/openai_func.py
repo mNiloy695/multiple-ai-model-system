@@ -9,6 +9,7 @@ from asgiref.sync import sync_to_async
 from accounts.models import CreditAccount
 from .track_used_word_subscription import trackUsedWords
 from .image_to_url_save import download_and_store_video
+from django.utils.translation import gettext as _
 
 import math
 User = get_user_model()
@@ -57,7 +58,7 @@ async def gpt_response(
 
     client = AsyncOpenAI(api_key=api_key)
     
-    # Sync DB fetch
+
     user = await sync_to_async(lambda: User.objects.filter(id=user_id).first())()
     if not user:
         return _error("User not found")
@@ -119,8 +120,8 @@ async def gpt_response(
             return True, ca.credits
 
     success, current_credits = await _deduct_credits_atomic()
-    if success is None: return _error("Credit account not found")
-    if success is False: return _error(f"Insufficient credits. Required: {charge_amount}")
+    if success is None: return _error(_("Credit account not found"))
+    if success is False: return _error(_("Insufficient credits. Current balance: {}").format(current_credits))
 
     # Max output logic
     remaining_credits = current_credits
@@ -141,7 +142,7 @@ async def gpt_response(
                 u.total_token_used -= charge_amount
                 u.save(update_fields=["total_token_used"])
         await _refund()
-        return _error("Insufficient credits for response.")
+        return _error(_("Insufficient credits to generate a response."))
     
     final_max_tokens = min(max_response_words, 4096)
 
@@ -157,9 +158,8 @@ async def gpt_response(
                 messages.append({"role": "system", "content": f"Conversation summary: {summary}"})
 
             user_content = []
-            
-            # Combine everything into a simple text-based multimodal format
-            # message will already contain the transcription from consumers.py
+           
+        
             if message:
                 user_content.append({"type": "text", "text": message})
             

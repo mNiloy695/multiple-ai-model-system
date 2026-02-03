@@ -9,6 +9,7 @@ from .models import OTP,CreditAccount
 from django.contrib.auth import get_user_model
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from .tasks import send_otp_email_task
+from django.utils.translation import gettext as _
 User= get_user_model()
 from random import randint
 class RegisterView(APIView):
@@ -32,7 +33,7 @@ class RegisterView(APIView):
 #     }
 # )
 
-            return Response({"message": "User registered successfully. Please check your email for the verification code."}, status=status.HTTP_201_CREATED)
+            return Response({"message": _("User registered successfully. Please check your email for the verification code.")}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -45,7 +46,7 @@ class ActivateAccountView(APIView):
             user.save()
             
             OTP.objects.filter(user=user, type='registration').delete()
-            return Response({"message": "Account activated successfully."}, status=status.HTTP_200_OK)
+            return Response({"message": _("Account activated successfully.")}, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
 
@@ -89,7 +90,7 @@ class LogoutView(APIView):
             refresh_token = request.data["refresh"]
             token = RefreshToken(refresh_token)
             token.blacklist()
-            return Response({"message": "User logged out successfully."}, status=status.HTTP_205_RESET_CONTENT)
+            return Response({"message": _("User logged out successfully.")}, status=status.HTTP_205_RESET_CONTENT)
         except Exception as e:
             return Response({"error": "Invalid token."}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -137,7 +138,7 @@ class GoogleLoginAPIView(APIView):
         google_data = google_response.json()
         email = google_data.get("email")
         if not email:
-            return Response({"error": "Email not found in Google token"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": _("Email not found in Google token")}, status=status.HTTP_400_BAD_REQUEST)
 
         # Get or create user
         user = get_or_create_google_user(google_data)
@@ -164,7 +165,7 @@ class ForgotPasswordView(APIView):
                 user = User.objects.get(email=email)
             except User.DoesNotExist:
                 return Response(
-                    {"error": "No account found with this email."},
+                    {"error": _("No account found with this email.")},
                     status=status.HTTP_404_NOT_FOUND
                 )
 
@@ -178,7 +179,7 @@ class ForgotPasswordView(APIView):
                 message=message,
                 message_type='forgot password'
             )
-            return Response({"success": "OTP sent successfully to your email"}, status=status.HTTP_200_OK)
+            return Response({"success": _("OTP sent successfully to your email")}, status=status.HTTP_200_OK)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -197,14 +198,13 @@ class ResetView(APIView):
             try:
                 user = User.objects.get(email=email)
             except User.DoesNotExist:
-                return Response({"error": "User not available on this email"}, status=status.HTTP_404_NOT_FOUND)
+                return Response({"error": _("User not available on this email")}, status=status.HTTP_404_NOT_FOUND)
 
             otp = OTP.objects.filter(user=user, code=code).first()
             if not otp:
-                return Response({"error": "Invalid OTP"}, status=status.HTTP_400_BAD_REQUEST)
-
+                return Response({"error": _("Invalid OTP")}, status=status.HTTP_400_BAD_REQUEST)
             if otp.is_expired():
-                return Response({"error": "OTP expired"}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({"error": _("OTP expired")}, status=status.HTTP_400_BAD_REQUEST)
 
             user.set_password(password)
             if user.is_active == False:
@@ -214,7 +214,7 @@ class ResetView(APIView):
             # Delete OTP after successful use
             otp.delete()
 
-            return Response({"success": "Password reset successfully"}, status=status.HTTP_200_OK)
+            return Response({"success": _("Password reset successfully")}, status=status.HTTP_200_OK)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -304,4 +304,4 @@ class CreditAccountView(APIView):
             serializer = CreditAccountSerializer(credit_account)
             return Response(serializer.data, status=status.HTTP_200_OK)
         except CreditAccount.DoesNotExist:
-            return Response({"error": "Credit account not found."}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"error": _("Credit account not found.")}, status=status.HTTP_404_NOT_FOUND)

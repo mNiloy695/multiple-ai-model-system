@@ -8,6 +8,7 @@ from django.conf import settings
 from django.contrib.auth.models import AnonymousUser
 from django.contrib.auth import get_user_model
 import base64,requests,re
+from django.utils.translation import gettext as _
 try:
     from langdetect import detect as detect_language
 except ImportError:
@@ -365,7 +366,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
         user_voice = None
         
         if bytes_data:
-            # Handle direct binary voice data
+            
             user_voice = bytes_data
             print("DEBUG: Received direct binary voice data")
         elif text_data:
@@ -389,7 +390,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
         if fresh_user.api_limit<=0:
             await self.send_json_with_credits({
                 "type": "limit exceed",
-                "message": "You have exceeded your daily limit. Please watch ads or buy a subscription for more requests."
+                "message": _("You have exceeded your daily limit. Please watch ads or buy a subscription for more requests.")
             })
             return 
         
@@ -417,7 +418,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
         # --- FIX: Load model data EARLIER so transcription can use the API key ---
         session_data = await self.get_session_data(self.session_id, self.user)
         if not session_data or not session_data.get("model"):
-            await self.send_json_with_credits({"text": "no available session found"})
+            await self.send_json_with_credits({"text": _("no available session found")})
             await self.close(1000)
             return 
         
@@ -459,13 +460,13 @@ class ChatConsumer(AsyncWebsocketConsumer):
                                 message_content = f"{message_content}\n(Voice: {voice_text})"
                         elif transcription and transcription.get("error"):
                              print(f"DEBUG: Transcription Error: {transcription['error']}")
-                             await self.send_json_with_credits({"type": "error", "message": f"Voice transcription failed: {transcription['error']}"})
+                             await self.send_json_with_credits({"type": "error", "message": _("Voice transcription failed: {}").format(transcription['error'])})
                         else:
                              print(f"DEBUG: Transcription response missing text: {transcription}")
-                             await self.send_json_with_credits({"type": "error", "message": "Voice transcription returned empty response"})
+                             await self.send_json_with_credits({"type": "error", "message": _("Voice transcription returned empty response")})
                      except Exception as te:
                         print(f"DEBUG: Auto-transcription failed: {te}")
-                        await self.send_json_with_credits({"type": "error", "message": f"Voice transcription error: {str(te)}"})
+                        await self.send_json_with_credits({"type": "error", "message": _("Voice transcription error: {}").format(str(te))})
                  else:
                      print(f"DEBUG: Skipping transcription for non-OpenAI provider: {provider}")
 
@@ -474,7 +475,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                   user_images=[user_images]
                 detect_image_or_video=await sync_to_async(detect_media_easy)(user_images[0] if user_images else None)
                 if detect_image_or_video =="unknown":
-                    await self.send_json_with_credits({"type": "error", "message": "Unknown media link. Please select an image or video."})
+                    await self.send_json_with_credits({"type": "error", "message": _("Unknown media link. Please select an image or video.")})
                     return
                 elif detect_image_or_video=="image":
                     images=await sync_to_async(download_and_store_webp)(image_urls=user_images)
@@ -511,7 +512,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
         # Check for empty message specifically for chat models
         model_type = getattr(model, "model_type", None)
         if model_type == "chat" and not message_content and not user_images and not user_voice:
-            await self.send_json_with_credits({"type": "error", "message": "Please type a message to receive assistance."})
+            await self.send_json_with_credits({"type": "error", "message": _("Please type a message to receive assistance.")})
             return
         
         # Ensure language variables exist (default to English)
@@ -540,7 +541,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
             resolution=data.get("resolution",None)
         
             if not self.user.subscribed:
-                await self.send(json.dumps({"type":"error","message":"Only free model is available for free users. Please upgrade/buy coins to access premium models."}))
+                await self.send(json.dumps({"type":"error","message": _("Only free model is available for free users. Please upgrade/buy coins to access premium models.")}))
                 return
 
             if model_type=="text_to_video":
@@ -596,7 +597,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                         if saved_ai_message:
                             await self.send_json_with_credits({"type": "new_message", "message": saved_ai_message})
                 except Exception as e:
-                    await self.send_json_with_credits({"type": "error", "message": f"Error: {str(e)}"})
+                    await self.send_json_with_credits({"type": "error", "message": _("Error: {}").format(str(e))})
         elif provider=="openai":
             model_id = getattr(model, "model_id", None)
             api_key = getattr(model, "api_key", None)
@@ -610,7 +611,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
             # 1024x1024 (square) - 1536x1024 (landscape) - 1024x1536
             
             if not self.user.subscribed:
-                await self.send(json.dumps({"type":"error","message":"Only free model is available for free users. Please upgrade to access premium models."}))
+                await self.send(json.dumps({"type":"error","message": _("Only free model is available for free users. Please upgrade to access premium models.")}))
                 return
             
             if model_id and api_key:
@@ -641,27 +642,26 @@ class ChatConsumer(AsyncWebsocketConsumer):
                     
                     if ai_response:
 
-                        # Download and store images locally
+                      
                         raw_images = ai_response.get("images", [])
                         final_images = []
                         if raw_images:
 
-                            # Use the existing download utility
+              
                             downloaded = await database_sync_to_async(download_and_store_webp)(image_urls=raw_images)
                             final_images = [img for img in downloaded if img]
 
                         
                         resp_content = ai_response.get("text") or ai_response.get("content") or ai_response.get("error") or ""
                         
-                        # --- GENERATE AI VOICE IF USER SENT VOICE ---
+             
                         ai_voice_db_path = None
                         
                         resp_content = ai_response.get("text") or ai_response.get("content") or ai_response.get("error") or ""
-                        
-                        # AI responds with text only (no voice generation)
+                 
                         ai_voice_db_path = None
                         
-                        # Safety fallback if somehow both are empty
+                
                         if not resp_content and not final_images and not raw_images:
                             resp_content = "The model generated an empty response. Please try again."
 
@@ -731,7 +731,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
         elif provider=="wavespeedai":
             if not self.user.subscribed:
-                await self.send(json.dumps({"type":"error","message":"Only free model is available for free users. Please upgrade to access premium models."}))
+                await self.send(json.dumps({"type":"error","message": _("Only free model is available for free users. Please upgrade to access premium models.")}))
                 return
             model_id = getattr(model, "model_id", None)
             api_key = getattr(model, "api_key", None)
@@ -765,7 +765,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 #for chat model
 
                 if model_type=="chat":
-                   await self.send_json_with_credits({"type": "error", "message": f"This model does not support chat"})
+                   await self.send_json_with_credits({"type": "error", "message": _("This model does not support chat")})
                 
                 #image editor
               
@@ -808,7 +808,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                         if saved_ai_message:
                             await self.send_json_with_credits({"type": "new_message", "message": saved_ai_message})
                   except Exception as e:
-                      await self.send_json_with_credits({"type": "error", "message": f"Error: {str(e)}"})
+                      await self.send_json_with_credits({"type": "error", "message": _("Error: {}").format(str(e))})
                 
                 #text to video generation
                 elif model_type=="text_to_video":
@@ -835,18 +835,18 @@ class ChatConsumer(AsyncWebsocketConsumer):
                             self.session_id,
                             self.user,
                             "ai",
-                            content = "Video generated successfully.",
+                            content = _("Video generated successfully."),
                             images=[video_url]
                         )
                          if saved_ai_message:
                             await self.send_json_with_credits({"type": "new_message", "message": saved_ai_message})
                             
                     except Exception as e:
-                        await self.send_json_with_credits({"type": "error", "message": f"Error: {str(e)}"})
+                        await self.send_json_with_credits({"type": "error", "message": _("Error: {}").format(str(e))})
                         return
                 elif model_type=="image_tool":
                     if not image or len(image) == 0:
-                        await self.send_json_with_credits({"type": "error", "message": "Image tool requires an image. Please upload an image first."})
+                        await self.send_json_with_credits({"type": "error", "message": _("Image tool requires an image. Please upload an image first.")})
                         return
 
                     print("images", image[0])
@@ -888,7 +888,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                             if saved_ai_message:
                                 await self.send_json_with_credits({"type": "new_message", "message": saved_ai_message})
                     except Exception as e:
-                        await self.send_json_with_credits({"type": "error", "message": f"Error: {str(e)}"})
+                        await self.send_json_with_credits({"type": "error", "message": _("Error: {}").format(str(e))})
                         return
                 elif model_type=="video_upscaler":
                     if not image or len(image) == 0:

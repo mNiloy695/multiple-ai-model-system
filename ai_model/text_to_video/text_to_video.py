@@ -6,7 +6,8 @@ from asgiref.sync import sync_to_async
 from ..track_used_word_subscription import trackUsedWords
 from accounts.models import CreditAccount
 import math
-
+from django.db import transaction
+from django.utils.translation import gettext as _
 # base cost means cost for 1 second
 data_of_models = {
     "openai/sora-2/text-to-video": {
@@ -57,19 +58,19 @@ async def text_to_video_generation(model_id, prompt, api_key, duration, height, 
     try:
         user = await sync_to_async(lambda: User.objects.select_related('creditaccount').get(id=user_id))()
     except User.DoesNotExist:
-        raise ValueError("Invalid user account ID")
+        raise ValueError(_("Invalid user account ID"))
     
     total_base_cost = base_cost * duration
 
     try:
         user_account = await sync_to_async(lambda: user.creditaccount)()
         if user_account.credits < total_base_cost:
-            raise ValueError("Insufficient credits to perform this operation.")
+            raise ValueError(_("Insufficient credits to perform this operation."))
     except CreditAccount.DoesNotExist:
-        raise ValueError("Invalid user ID")
+        raise ValueError(_("Invalid user ID"))
     
     if model_id not in data_of_models:
-        raise ValueError(f"Model ID {model_id} not supported.")
+        raise ValueError(_("Model ID {model_id} not supported.").format(model_id=model_id))
     
     payload = {}
     if model_id == "openai/sora-2/text-to-video":
@@ -105,16 +106,16 @@ async def text_to_video_generation(model_id, prompt, api_key, duration, height, 
     # Submit task (Sync request in thread)
     response = await sync_to_async(requests.post)(submit_url, headers=headers, json=payload, timeout=60)
     if response.status_code != 200:
-        raise Exception(f"Submit failed {response.status_code}: {response.text}")
+        raise Exception(_("Submit failed {response_status_code}: {response_text}").format(response_status_code=response.status_code, response_text=response.text))
 
     request_id = response.json()["data"]["id"]
     result_url = f"https://api.wavespeed.ai/api/v3/predictions/{request_id}/result"
     
-    # Polling result (Non-blocking)
+
     while True:
         poll_resp = await sync_to_async(requests.get)(result_url, headers={"Authorization": f"Bearer {API_KEY}"}, timeout=20)
         if poll_resp.status_code != 200:
-            raise Exception(f"Polling error {poll_resp.status_code}")
+            raise Exception(_("Polling error {poll_resp_status_code}").format(poll_resp_status_code=poll_resp.status_code))
 
         data = poll_resp.json()["data"]
         status = data["status"]
@@ -122,11 +123,11 @@ async def text_to_video_generation(model_id, prompt, api_key, duration, height, 
         if status == "completed":
             break
         if status == "failed":
-            raise Exception(data.get("error", "Video generation failed"))
+            raise Exception(data.get("error", _("Video generation failed")))
         
-        await asyncio.sleep(2) # RELEASE THREAD during polling
+        await asyncio.sleep(2) 
 
-    # Deduct credits atomically
+ 
     def _final_deduct():
         with transaction.atomic():
             acc = CreditAccount.objects.select_for_update().filter(user_id=user_id).first()

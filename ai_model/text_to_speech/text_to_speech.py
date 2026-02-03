@@ -7,19 +7,19 @@ from .voice_id import voice_id_check
 from django.contrib.auth import get_user_model
 from accounts.models import CreditAccount
 User=get_user_model()
-
+from django.utils.translation import gettext as _
 def text_to_sound(model_id,api_key,user_id,base_cost,bitrate=None,emotion="happy",english_normalization=True,formate="mp3",prompt="",language_boost="auto",pitch=1,sample_rate=None,speed=1,voice_id="Wise_Woman",volume=1,channel=None):
     print("Hello from WaveSpeedAI!")
     if not user_id:
-        return {"error":"User id not found It's required"}
+        return {"error":_("User id not found It's required")}
     
     if not prompt or not isinstance(prompt, str):
-        return {"error": "Text prompt is required and must be a string"}
+        return {"error": _("Text prompt is required and must be a string")}
     try:
         user=User.objects.select_related("creditaccount").get(id=user_id)
 
     except User.DoesNotExist:
-        return {"error":"User not found"}
+        return {"error":_("User not found")}
     from decimal import Decimal
     prompts_cost = Decimal(len(prompt)) / Decimal("1000") if prompt else Decimal("0")
     base_cost = Decimal(str(base_cost))  # ensures safet
@@ -30,9 +30,9 @@ def text_to_sound(model_id,api_key,user_id,base_cost,bitrate=None,emotion="happy
     try:
         user_account=user.creditaccount
         if user_account.credits<prompts_cost:
-            raise ValueError("Insufficient credits to perform this operation.")
+            raise ValueError(_("Insufficient credits to perform this operation."))
     except CreditAccount.DoesNotExist:
-        return {"error":"Invalid user ID"}
+        return {"error":_("Invalid user ID")}
 
 
     API_KEY = api_key
@@ -142,7 +142,7 @@ def text_to_sound(model_id,api_key,user_id,base_cost,bitrate=None,emotion="happy
         print(f"Task submitted successfully. Request ID: {request_id}")
     else:
         print(f"Error: {response.status_code}, {response.text}")
-        raise Exception(f"Submit failed {response.status_code}: {response.text}")
+        raise Exception(_("Submit failed {response.status_code}: {response.text}").format(response_status_code=response.status_code, response_text=response.text))
 
     url = f"https://api.wavespeed.ai/api/v3/predictions/{request_id}/result"
     headers = {"Authorization": f"Bearer {API_KEY}"}

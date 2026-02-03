@@ -8,14 +8,12 @@ from django.contrib.auth import get_user_model
 import math
 User=get_user_model()
 from accounts.models import CreditAccount
-
+from django.utils.translation import gettext as _
 import base64
 from django.conf import settings
 
 def get_image_as_base64(url):
-    """
-    Converts an image URL (local or remote) to a base64 data URI.
-    """
+ 
     if not url:
         return None
     if url.startswith("data:"):
@@ -48,7 +46,6 @@ def video_effect(model_id,api_key,user_id,images,base_cost,duration=None,effect=
     print("Hello from WaveSpeedAI!")
     API_KEY = api_key
     
-    # Convert local images to base64 for external API accessibility
     processed_image = get_image_as_base64(images)
     
     payload=payload_data(model_id=model_id,duration=duration,effect=effect,image=processed_image,resolution=resolution,bgm=bgm,template=template,seed=seed,sound_effect_switch=sound_effect_switch)
@@ -129,7 +126,7 @@ def video_effect(model_id,api_key,user_id,images,base_cost,duration=None,effect=
         print(f"Task submitted successfully. Request ID: {request_id}")
     else:
         print(f"Error: {response.status_code}, {response.text}")
-        raise Exception(f"Submit failed {response.status_code}: {response.text}")
+        raise Exception(_("Submit failed {response_status_code}: {response_text}").format(response_status_code=response.status_code, response_text=response.text))
 
 
     url = f"https://api.wavespeed.ai/api/v3/predictions/{request_id}/result"

@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from .models import AIModelInfo,ChatMessage,ChatSession
-
+from django.utils.translation import gettext as _
 class AIModelSerializer(serializers.ModelSerializer):
     class Meta:
         model=AIModelInfo
@@ -12,7 +12,7 @@ class AIModelSerializer(serializers.ModelSerializer):
         base_cost=attrs.get('base_cost',None)
 
         if images_generating_models and (base_cost is None or base_cost<=0):
-            raise serializers.ValidationError("Base cost must be greater than 0 for image generating models.")
+            raise serializers.ValidationError(_("Base cost must be greater than 0 for image generating models."))
         return attrs
 
 class AIModelLimitedSerializer(serializers.ModelSerializer):

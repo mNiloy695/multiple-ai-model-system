@@ -3,18 +3,18 @@ import os
 import requests
 import json
 import time
-
+from django.utils.translation import gettext as _
 from django.contrib.auth import get_user_model
 User=get_user_model()
 
 import base64
 def prepare_image(img):
     if isinstance(img, str):
-        if img.startswith("http"):  # remote URL
+        if img.startswith("http"):  
             import requests
             r = requests.get(img)
             img_bytes = r.content
-        else:  # local file path
+        else:  
             with open(img, "rb") as f:
                 img_bytes = f.read()
         return "data:image/png;base64," + base64.b64encode(img_bytes).decode("utf-8")
@@ -35,30 +35,29 @@ def image_edit(model_id,prompt,api_key,user_id,output_format="png",aspect_ratio=
     API_KEY = api_key
 
     if aspect_ratio not in ASPECT_RATIO:
-        return {"error":f"Invalid target aspect_ratio {aspect_ratio}. Available options: {ASPECT_RATIO}"}
+        return {"error":_("Invalid target aspect_ratio {aspect_ratio}. Available options: {ASPECT_RATIO}").format(aspect_ratio=aspect_ratio, ASPECT_RATIO=ASPECT_RATIO)}
     
     if output_format not in ['png','jpeg']:
-        return {"error":f"Invalid target output_format.Available options: 'png or jpeg"}
+        return {"error":_("Invalid target output_format.Available options: 'png or jpeg'")}
     
     if model_id!="google/nano-banana/edit":
-        return {"error":f"Invalid model Id .Available model is google/nano-banana/edit"}
+        return {"error":_("Invalid model Id .Available model is google/nano-banana/edit")}
     
     if not user_id:
-        return {"error":"User id not found It's required"}
+        return {"error":_("User id not found It's required")}
     
-
     try:
         user=User.objects.select_related("creditaccount").get(id=user_id)
 
     except User.DoesNotExist:
-        return {"error":"User not found"}
+        return {"error":_("User not found")}
     
     try:
         user_account=user.creditaccount
         if user_account.credits<base_cost:
-            raise ValueError("Insufficient credits to perform this operation.")
+            raise ValueError(_("Insufficient credits to perform this operation."))
     except CreditAccount.DoesNotExist:
-        return {"error":"Invalid user ID"}
+        return {"error":_("Invalid user ID")}
     
     # images= [
     #             "https://d1q70pf5vjeyhc.cloudfront.net/media/fb8f674bbb1a429d947016fd223cfae1/images/1756458671588525508_ACMHEBxu.jpeg"
@@ -102,7 +101,7 @@ def image_edit(model_id,prompt,api_key,user_id,output_format="png",aspect_ratio=
         print(f"Task submitted successfully. Request ID: {request_id}")
     else:
         print(f"Error: {response.status_code}, {response.text}")
-        raise Exception(f"Submit failed {response.status_code}: {response.text}")
+        raise Exception(_(f"Submit failed {response.status_code}: {response.text}"))
       
 
     url = f"https://api.wavespeed.ai/api/v3/predictions/{request_id}/result"
@@ -135,7 +134,7 @@ def image_edit(model_id,prompt,api_key,user_id,output_format="png",aspect_ratio=
             else:
                 print(f"Task still processing. Status: {status}")
         else:
-            print(f"Error: {response.status_code}, {response.text}")
+            print(f"Failed to retrieve results. Status code: {response.status_code}")
             break
 
         

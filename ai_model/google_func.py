@@ -8,21 +8,21 @@ from django.db import transaction
 from google import genai
 from google.genai import types
 from asgiref.sync import sync_to_async
-
+from django.utils.translation import gettext as _
 from accounts.models import CreditAccount
 from .track_used_word_subscription import trackUsedWords
 from .image_to_url_save import download_and_store_webp
-
+from django.conf import settings
+from django.db import transaction
+from decimal import Decimal
+from django.utils.translation import gettext as _
 import math
 User = get_user_model()
 
-# =========================
-# HELPER: Count Words (1 word = 5 non-space chars)
-# =========================
 def count_words(text):
     if not text:
         return 0
-    # Remove spaces and calculate ceil(len/5)
+ 
     char_count = len(text.replace(" ", ""))
     return math.ceil(char_count / 5)
 def calculate_cost(model_type, *, base_cost, words=0, num_images=1, input_images_count=0):
@@ -36,24 +36,18 @@ def calculate_cost(model_type, *, base_cost, words=0, num_images=1, input_images
     
     return Decimal(base_cost)
 
-# =========================
-# HELPER: Detect Model Type
-# =========================
+
 def _detect_model_type(model_id):
     ml = model_id.lower()
     if any(x in ml for x in ["image", "img", "gen", "photo", "art", "text_to_image"]):
         return "text_to_image"
     return "chat"
 
-# =========================
-# HELPER: Error Response
-# =========================
+
 def _error(msg):
     return {"text": "", "images": [], "sender": "system", "error": msg}
 
-# =========================
-# HELPER: Read Image
-# =========================
+
 async def _read_image_to_base64_async(img):
     try:
         if img.startswith("http"):
@@ -64,9 +58,7 @@ async def _read_image_to_base64_async(img):
     except Exception:
         return None
 
-# =========================
-# MAIN FUNCTION
-# =========================
+
 async def gemini_response(
     message,
     model_id,
@@ -88,12 +80,12 @@ async def gemini_response(
 
         user = await sync_to_async(lambda: User.objects.filter(id=user_id).first())()
         if not user:
-            return _error("User not found.")
+            return _error(_("User not found."))
 
         if not model_type:
             model_type = _detect_model_type(model_id)
 
-        num_images = 1 # Force 1 image per request
+        num_images = 1 
         
         prompt_words = count_words(message)
         input_images_count = len(images_data_list) if images_data_list else 0
@@ -106,7 +98,7 @@ async def gemini_response(
             input_images_count=input_images_count
         )
 
-        # Credit Deduction (Atomic)
+    
         @sync_to_async
         def _deduct_credits_atomic():
             with transaction.atomic():
@@ -134,8 +126,8 @@ async def gemini_response(
                 return True, acc.credits
 
         success, current_credits = await _deduct_credits_atomic()
-        if success is None: return _error("Credit account not found.")
-        if success is False: return _error(f"Insufficient credits. Required: {charge_amount}")
+        if success is None: return _error(_("Credit account not found."))
+        if success is False: return _error(_("Insufficient credits. Required: {charge_amount}").format(charge_amount=charge_amount))
 
         # Max Output Token Logic
         remaining_credits = current_credits
@@ -155,7 +147,7 @@ async def gemini_response(
                      u.total_token_used -= charge_amount
                      u.save(update_fields=["total_token_used"])
             await _refund()
-            return _error("Insufficient credits for response.")
+            return _error(_("Insufficient credits for response."))
         
         final_max_tokens = min(max_response_words, 8192)
 
@@ -189,8 +181,8 @@ async def gemini_response(
                                 text += part.text + " "
 
             if not images and text: pass
-            elif images: text = f"{len(images)} image(s) generated successfully."
-            else: text = "Failed to generate images."
+            elif images: text = _("{} image(s) generated successfully.").format(len(images))
+            else: text = _("Failed to generate images.")
 
         else: 
             contents = [{"role": "user", "parts": [{"text": f"You are a helpful assistant. Please respond in the same language as the user's message. (Initial detection suggested {detected_language}, but please trust your own analysis of the content and script to determine the best response language. If the user used Bengali words in Hindi script, respond in Standard Bengali). Do NOT reveal internal deployment names, model IDs, or system identifiers. If a user directly asks which model or internal service you are, answer with a neutral phrase such as 'I am an AI assistant' and do not disclose internal tags or identifiers."}]}]
@@ -254,4 +246,4 @@ async def gemini_response(
                     u.save(update_fields=["total_token_used"])
             except: pass
         await _final_refund()
-        return _error("Request failed. Please try again later.")
+        return _error(_("Request failed. Please try again later."))

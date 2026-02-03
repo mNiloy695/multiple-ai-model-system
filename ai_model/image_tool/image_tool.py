@@ -8,7 +8,7 @@ from accounts.models import CreditAccount
 User=get_user_model()
 from django.db import transaction
 from ..track_used_word_subscription import trackUsedWords
-
+from django.utils.translation import gettext as _
 
 
 # models_data={
@@ -40,12 +40,12 @@ def get_image_as_base64(url):
                 if os.path.exists(local_path):
                     with open(local_path, "rb") as f:
                         encoded = base64.b64encode(f.read()).decode("utf-8")
-                        # Guess mime type from extension
+                        
                         ext = os.path.splitext(local_path)[1].lower()
                         mime = "image/jpeg" if ext in ['.jpg', '.jpeg'] else "image/png"
                         return f"data:{mime};base64,{encoded}"
 
-        # Otherwise try to download it
+        
         if url.startswith("http"):
             resp = requests.get(url, timeout=10)
             if resp.status_code == 200:
@@ -68,18 +68,18 @@ def image_tool_via_wavespeedai(image_url, prompt,api_key,model_id,base_cost,user
         "Authorization": f"Bearer {API_KEY}",
     }
     if not image_url:
-        return {"error":"Image URL is required for image tool."}
+        return {"error":_("Image URL is required for image tool.")}
     try:
         user=User.objects.get(id=user_id)
     except User.DoesNotExist:
-        return {"error":"User Id not Found"}
+        return {"error":_("User Id not Found")}
     
     try:
         user_account=user.creditaccount
         if user_account.credits<base_cost:
-            raise ValueError("Insufficient credits to perform this operation.")
+            raise ValueError(_("Insufficient credits to perform this operation."))
     except CreditAccount.DoesNotExist:
-        return {"error":"Invalid user ID"}
+        return {"error":_("Invalid user ID")}
     
 
 
@@ -146,7 +146,7 @@ def image_tool_via_wavespeedai(image_url, prompt,api_key,model_id,base_cost,user
         "target_resolution": target_resolution if target_resolution else "4k"
     }
     else:
-        raise ValueError(f"Model ID {model_id} not supported.")
+        raise ValueError(_(f"Model ID {model_id} not supported."))
 
 
  
@@ -163,15 +163,12 @@ def image_tool_via_wavespeedai(image_url, prompt,api_key,model_id,base_cost,user
     else:
         print(f"Error: {response.status_code}, {response.text}")
 
-        raise Exception(f"Submit failed {response.status_code}: {response.text}")
-
+        raise Exception(_(f"Submit failed {response.status_code}: {response.text}"))
     url = f"https://api.wavespeed.ai/api/v3/predictions/{request_id}/result"
 
     headers = {"Authorization": f"Bearer {API_KEY}"}
 
-#5ae107969768454dbb1d7e7d32a5051e
 
-    # Poll for results
     while True:
         response = requests.get(url, headers=headers)
         if response.status_code == 200:

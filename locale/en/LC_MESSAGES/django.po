@@ -1,0 +1,517 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-02-03 10:48+0000\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+#: AIModelBackend/settings.py:139
+msgid "English"
+msgstr ""
+
+#: AIModelBackend/settings.py:140
+msgid "Mandarin Chinese"
+msgstr ""
+
+#: AIModelBackend/settings.py:141
+msgid "Hindi"
+msgstr ""
+
+#: AIModelBackend/settings.py:142
+msgid "Spanish"
+msgstr ""
+
+#: AIModelBackend/settings.py:143
+msgid "Arabic"
+msgstr ""
+
+#: AIModelBackend/settings.py:144
+msgid "French"
+msgstr ""
+
+#: AIModelBackend/settings.py:145
+msgid "Bengali"
+msgstr ""
+
+#: AIModelBackend/settings.py:146
+msgid "Portuguese"
+msgstr ""
+
+#: AIModelBackend/settings.py:147
+msgid "Russian"
+msgstr ""
+
+#: AIModelBackend/settings.py:148
+msgid "Urdu"
+msgstr ""
+
+#: AIModelBackend/settings.py:149
+msgid "Indonesian"
+msgstr ""
+
+#: AIModelBackend/settings.py:150
+msgid "German"
+msgstr ""
+
+#: AIModelBackend/settings.py:151
+msgid "Japanese"
+msgstr ""
+
+#: AIModelBackend/settings.py:152
+msgid "Marathi"
+msgstr ""
+
+#: AIModelBackend/settings.py:153
+msgid "Telugu"
+msgstr ""
+
+#: AIModelBackend/settings.py:154
+msgid "Turkish"
+msgstr ""
+
+#: AIModelBackend/settings.py:155
+msgid "Tamil"
+msgstr ""
+
+#: AIModelBackend/settings.py:156
+msgid "Vietnamese"
+msgstr ""
+
+#: AIModelBackend/settings.py:157
+msgid "Cantonese"
+msgstr ""
+
+#: AIModelBackend/settings.py:158
+msgid "Swahili"
+msgstr ""
+
+#: accounts/serializers.py:17
+msgid "Password and Confirm Password are required"
+msgstr ""
+
+#: accounts/serializers.py:19
+msgid "Password and Confirm Password does not match"
+msgstr ""
+
+#: accounts/serializers.py:22
+msgid "Username is required"
+msgstr ""
+
+#: accounts/serializers.py:29
+msgid "Email is already in use"
+msgstr ""
+
+#: accounts/serializers.py:31
+msgid "Username is already in use"
+msgstr ""
+
+#: accounts/serializers.py:54
+msgid "User with this email does not exist"
+msgstr ""
+
+#: accounts/serializers.py:58
+msgid "Invalid verification code"
+msgstr ""
+
+#: accounts/serializers.py:62
+msgid "Verification code has expired"
+msgstr ""
+
+#: accounts/serializers.py:78 accounts/serializers.py:81
+msgid "Invalid email or password"
+msgstr ""
+
+#: accounts/serializers.py:84
+msgid "Account is not activated"
+msgstr ""
+
+#: accounts/serializers.py:106
+msgid "Email is required."
+msgstr ""
+
+#: accounts/serializers.py:120
+msgid "Email, code, and password are required."
+msgstr ""
+
+#: accounts/views.py:36
+msgid ""
+"User registered successfully. Please check your email for the verification "
+"code."
+msgstr ""
+
+#: accounts/views.py:49
+msgid "Account activated successfully."
+msgstr ""
+
+#: accounts/views.py:93
+msgid "User logged out successfully."
+msgstr ""
+
+#: accounts/views.py:141
+msgid "Email not found in Google token"
+msgstr ""
+
+#: accounts/views.py:168
+msgid "No account found with this email."
+msgstr ""
+
+#: accounts/views.py:182
+msgid "OTP sent successfully to your email"
+msgstr ""
+
+#: accounts/views.py:201
+msgid "User not available on this email"
+msgstr ""
+
+#: accounts/views.py:205
+msgid "Invalid OTP"
+msgstr ""
+
+#: accounts/views.py:207
+msgid "OTP expired"
+msgstr ""
+
+#: accounts/views.py:217
+msgid "Password reset successfully"
+msgstr ""
+
+#: accounts/views.py:307 ai_model/google_func.py:129
+msgid "Credit account not found."
+msgstr ""
+
+#: ads_rewards/serializers.py:14
+msgid "Reward must be greater than zero"
+msgstr ""
+
+#: ai_model/consumers.py:393
+msgid ""
+"You have exceeded your daily limit. Please watch ads or buy a subscription "
+"for more requests."
+msgstr ""
+
+#: ai_model/consumers.py:421
+msgid "no available session found"
+msgstr ""
+
+#: ai_model/consumers.py:463
+msgid "Voice transcription failed: {}"
+msgstr ""
+
+#: ai_model/consumers.py:466
+msgid "Voice transcription returned empty response"
+msgstr ""
+
+#: ai_model/consumers.py:469
+msgid "Voice transcription error: {}"
+msgstr ""
+
+#: ai_model/consumers.py:478
+msgid "Unknown media link. Please select an image or video."
+msgstr ""
+
+#: ai_model/consumers.py:515
+msgid "Please type a message to receive assistance."
+msgstr ""
+
+#: ai_model/consumers.py:544
+msgid ""
+"Only free model is available for free users. Please upgrade/buy coins to "
+"access premium models."
+msgstr ""
+
+#: ai_model/consumers.py:600 ai_model/consumers.py:811
+#: ai_model/consumers.py:845 ai_model/consumers.py:891
+msgid "Error: {}"
+msgstr ""
+
+#: ai_model/consumers.py:614 ai_model/consumers.py:734
+msgid ""
+"Only free model is available for free users. Please upgrade to access "
+"premium models."
+msgstr ""
+
+#: ai_model/consumers.py:768
+msgid "This model does not support chat"
+msgstr ""
+
+#: ai_model/consumers.py:838 ai_model/download_video/download_veo_video.py:122
+msgid "Video generated successfully."
+msgstr ""
+
+#: ai_model/consumers.py:849
+msgid "Image tool requires an image. Please upload an image first."
+msgstr ""
+
+#: ai_model/deepseek.py:48 ai_model/image_edit/image_edit.py:53
+#: ai_model/image_to_3d/image_to_3d.py:57
+#: ai_model/text_to_speech/text_to_speech.py:22
+msgid "User not found"
+msgstr ""
+
+#: ai_model/deepseek.py:63 ai_model/openai_func.py:123
+msgid "Credit account not found"
+msgstr ""
+
+#: ai_model/deepseek.py:66
+msgid "Insufficient credits. Required: {}"
+msgstr ""
+
+#: ai_model/deepseek.py:94
+msgid "Insufficient credits for any response."
+msgstr ""
+
+#: ai_model/deepseek.py:170
+msgid "Authentication failed: Invalid API key or configuration."
+msgstr ""
+
+#: ai_model/deepseek.py:172
+msgid "API error. Please try again later."
+msgstr ""
+
+#: ai_model/deepseek.py:174
+msgid "System error occurred."
+msgstr ""
+
+#: ai_model/download_video/download_veo_video.py:35
+msgid "Insufficient credits"
+msgstr ""
+
+#: ai_model/download_video/download_veo_video.py:69
+#, python-brace-format
+msgid "Video generation timeout after {max_wait_time}s"
+msgstr ""
+
+#: ai_model/download_video/download_veo_video.py:72
+#: ai_model/openai_video/openai_video.py:175
+msgid "Video generation failed: {}"
+msgstr ""
+
+#: ai_model/download_video/download_veo_video.py:76
+msgid "No videos generated"
+msgstr ""
+
+#: ai_model/download_video/download_veo_video.py:89
+msgid "Failed to extract video bytes"
+msgstr ""
+
+#: ai_model/google_func.py:83
+msgid "User not found."
+msgstr ""
+
+#: ai_model/google_func.py:130
+#, python-brace-format
+msgid "Insufficient credits. Required: {charge_amount}"
+msgstr ""
+
+#: ai_model/google_func.py:150
+msgid "Insufficient credits for response."
+msgstr ""
+
+#: ai_model/google_func.py:184
+msgid "{} image(s) generated successfully."
+msgstr ""
+
+#: ai_model/google_func.py:185
+msgid "Failed to generate images."
+msgstr ""
+
+#: ai_model/google_func.py:249
+msgid "Request failed. Please try again later."
+msgstr ""
+
+#: ai_model/image_edit/image_edit.py:38
+#, python-brace-format
+msgid ""
+"Invalid target aspect_ratio {aspect_ratio}. Available options: {ASPECT_RATIO}"
+msgstr ""
+
+#: ai_model/image_edit/image_edit.py:41
+msgid "Invalid target output_format.Available options: 'png or jpeg'"
+msgstr ""
+
+#: ai_model/image_edit/image_edit.py:44
+msgid "Invalid model Id .Available model is google/nano-banana/edit"
+msgstr ""
+
+#: ai_model/image_edit/image_edit.py:47
+#: ai_model/text_to_speech/text_to_speech.py:14
+msgid "User id not found It's required"
+msgstr ""
+
+#: ai_model/image_edit/image_edit.py:58 ai_model/image_to_3d/image_to_3d.py:62
+#: ai_model/image_tool/image_tool.py:80
+#: ai_model/image_upscaler/image_upscaler.py:66
+#: ai_model/image_upscaler/image_upscaler.py:132
+#: ai_model/openai_video/openai_video.py:84
+#: ai_model/text_to_speech/text_to_speech.py:33
+#: ai_model/text_to_video/text_to_video.py:68
+msgid "Insufficient credits to perform this operation."
+msgstr ""
+
+#: ai_model/image_edit/image_edit.py:60 ai_model/image_to_3d/image_to_3d.py:64
+#: ai_model/image_tool/image_tool.py:82
+#: ai_model/image_upscaler/image_upscaler.py:68
+#: ai_model/image_upscaler/image_upscaler.py:129
+#: ai_model/text_to_speech/text_to_speech.py:35
+#: ai_model/text_to_video/text_to_video.py:70
+msgid "Invalid user ID"
+msgstr ""
+
+#: ai_model/image_edit/image_edit.py:104 ai_model/image_tool/image_tool.py:166
+#: ai_model/image_upscaler/image_upscaler.py:98
+#: ai_model/text_to_speech/text_to_speech.py:145
+#, python-brace-format
+msgid "Submit failed {response.status_code}: {response.text}"
+msgstr ""
+
+#: ai_model/image_to_3d/image_to_3d.py:51
+msgid "This model is not allow"
+msgstr ""
+
+#: ai_model/image_to_3d/image_to_3d.py:86
+#: ai_model/image_upscaler/image_upscaler.py:104
+msgid "Submit failed {} {}: {}"
+msgstr ""
+
+#: ai_model/image_tool/image_tool.py:71
+msgid "Image URL is required for image tool."
+msgstr ""
+
+#: ai_model/image_tool/image_tool.py:75
+#: ai_model/image_upscaler/image_upscaler.py:61
+#: ai_model/image_upscaler/image_upscaler.py:125
+msgid "User Id not Found"
+msgstr ""
+
+#: ai_model/image_tool/image_tool.py:149
+#: ai_model/text_to_video/text_to_video.py:73
+#, python-brace-format
+msgid "Model ID {model_id} not supported."
+msgstr ""
+
+#: ai_model/image_upscaler/image_upscaler.py:53
+msgid "Image upscaler only support wavespeed-ai/flashvsr model"
+msgstr ""
+
+#: ai_model/image_upscaler/image_upscaler.py:55
+msgid "The targeted resulation can be 1080p/720p/2k/4k"
+msgstr ""
+
+#: ai_model/image_upscaler/image_upscaler.py:109
+msgid "Polling error {} {}: {}"
+msgstr ""
+
+#: ai_model/openai_func.py:124
+msgid "Insufficient credits. Current balance: {}"
+msgstr ""
+
+#: ai_model/openai_func.py:145
+msgid "Insufficient credits to generate a response."
+msgstr ""
+
+#: ai_model/openai_video/helpers.py:13
+msgid "Video content is empty"
+msgstr ""
+
+#: ai_model/openai_video/helpers.py:19
+msgid "Video content must be bytes"
+msgstr ""
+
+#: ai_model/openai_video/helpers.py:55
+msgid "File write error: {}"
+msgstr ""
+
+#: ai_model/openai_video/helpers.py:60
+msgid "Unexpected error saving video: {}"
+msgstr ""
+
+#: ai_model/openai_video/openai_video.py:31
+msgid "Prompt cannot be empty"
+msgstr ""
+
+#: ai_model/openai_video/openai_video.py:39
+msgid "Invalid duration. Allowed values are 4, 8, or 12 second's."
+msgstr ""
+
+#: ai_model/openai_video/openai_video.py:42
+msgid "Invalid model ID. Contact admin."
+msgstr ""
+
+#: ai_model/openai_video/openai_video.py:55
+msgid "Invalid resolution. Allowed resolutions are: {}"
+msgstr ""
+
+#: ai_model/openai_video/openai_video.py:80
+msgid "User or Credit Account not found"
+msgstr ""
+
+#: ai_model/openai_video/openai_video.py:96
+msgid "AI error: {}"
+msgstr ""
+
+#: ai_model/openai_video/openai_video.py:107
+msgid "Video job created but no job ID found in response."
+msgstr ""
+
+#: ai_model/openai_video/openai_video.py:121
+msgid "Failed to check video status: {}"
+msgstr ""
+
+#: ai_model/openai_video/openai_video.py:164
+msgid "Video generated successfully {}."
+msgstr ""
+
+#: ai_model/openai_video/openai_video.py:185
+msgid "Unknown job status: {}"
+msgstr ""
+
+#: ai_model/openai_video/openai_video.py:187
+msgid "Video generation timeout. Job took too long to complete."
+msgstr ""
+
+#: ai_model/serializers.py:15
+msgid "Base cost must be greater than 0 for image generating models."
+msgstr ""
+
+#: ai_model/text_to_speech/text_to_speech.py:17
+msgid "Text prompt is required and must be a string"
+msgstr ""
+
+#: ai_model/text_to_video/text_to_video.py:61
+msgid "Invalid user account ID"
+msgstr ""
+
+#: ai_model/text_to_video/text_to_video.py:109
+#: ai_model/video_effect/video_effect.py:129
+#, python-brace-format
+msgid "Submit failed {response_status_code}: {response_text}"
+msgstr ""
+
+#: ai_model/text_to_video/text_to_video.py:118
+#, python-brace-format
+msgid "Polling error {poll_resp_status_code}"
+msgstr ""
+
+#: ai_model/text_to_video/text_to_video.py:126
+msgid "Video generation failed"
+msgstr ""
+
+#: ai_model/views.py:91
+msgid "Session type is required"
+msgstr ""
+
+#: ai_model/views.py:110
+msgid "No {} active AI models available."
+msgstr ""
