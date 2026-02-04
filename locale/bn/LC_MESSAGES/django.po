@@ -128,7 +128,7 @@ msgstr "ভেরিফিকেশন কোডের মেয়াদ শে
 
 #: accounts/serializers.py:78 accounts/serializers.py:81
 msgid "Invalid email or password"
-msgstr "অকার্যকর ইমেল বা পাসওয়ার্ড"
+msgstr "ভুল ইমেল বা পাসওয়ার্ড"
 
 #: accounts/serializers.py:84
 msgid "Account is not activated"

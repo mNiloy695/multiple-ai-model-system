@@ -342,9 +342,6 @@ msgstr "अमान्य लक्ष्य aspect_ratio {aspect_ratio}। उ
 msgid "Invalid target output_format.Available options: 'png or jpeg'"
 msgstr "अमान्य लक्ष्य output_format। उपलब्ध विकल्प: 'png' या 'jpeg'"
 
-#: accounts/views.py:201
-msgid "User not available on this email"
-msgstr "इस ईमेल पर उपयोगकर्ता उपलब्ध नहीं है"
 
 #: ai_model/image_edit/image_edit.py:44
 msgid "Invalid model Id .Available model is google/nano-banana/edit"
