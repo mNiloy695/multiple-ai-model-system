@@ -10,6 +10,11 @@ from accounts.models import CreditAccount
 from .track_used_word_subscription import trackUsedWords
 from .image_to_url_save import download_and_store_video
 from django.utils.translation import gettext as _
+from django.conf import settings
+import os
+import base64
+import requests
+import mimetypes
 
 import math
 User = get_user_model()
@@ -38,6 +43,47 @@ def calculate_cost(model_type, *, base_cost, words=0, num_images=1, secounds=4, 
         return base_cost  # flat cost
 
     return Decimal(base_cost)
+
+async def _prepare_openai_image(url):
+    """
+    Helper to convert image URL or local path to base64 data URL for OpenAI.
+    This prevents 'Timeout while downloading' errors by sending data directly.
+    """
+    if not url or not isinstance(url, str):
+        return url
+        
+    if url.startswith("data:"):
+        return url
+
+    # 1. Try local filesystem if it looks like a media URL
+    # This is the FASTEST way and solves the timeout error
+    if "/media/" in url:
+        try:
+            relative_path = url.split("/media/")[-1]
+            local_path = os.path.join(settings.MEDIA_ROOT, relative_path.replace('/', os.sep))
+            
+            if os.path.exists(local_path):
+                with open(local_path, "rb") as f:
+                    data = f.read()
+                    mime, _ = mimetypes.guess_type(local_path)
+                    mime = mime or "image/jpeg"
+                    b64 = base64.b64encode(data).decode('utf-8')
+                    return f"data:{mime};base64,{b64}"
+        except Exception as e:
+            print(f"DEBUG: Failed to read local image {url}: {e}")
+
+    # 2. Try fetching via HTTP if it's a remote URL
+    if url.startswith("http"):
+        try:
+            response = await sync_to_async(requests.get)(url, timeout=15)
+            if response.status_code == 200:
+                content_type = response.headers.get("Content-Type", "image/jpeg")
+                b64 = base64.b64encode(response.content).decode("utf-8")
+                return f"data:{content_type};base64,{b64}"
+        except Exception as e:
+            print(f"DEBUG: Failed to fetch remote image {url}: {e}")
+            
+    return url
 
 async def gpt_response(
     message: str,
@@ -165,9 +211,11 @@ async def gpt_response(
             
             if images_data_list:
                 for img_url in images_data_list:
-                    user_content.append({"type": "image_url", "image_url": {"url": img_url}})
+                    
+                    processed_url = await _prepare_openai_image(img_url)
+                    user_content.append({"type": "image_url", "image_url": {"url": processed_url}})
             
-            # If everything is empty, send a space to avoid API error
+          
             messages.append({"role": "user", "content": user_content or " "})
 
             res = await client.chat.completions.create(
@@ -203,7 +251,7 @@ async def gpt_response(
             images = [img.url for img in res.data]
 
         elif model_type == "audio_generation":
-            # Transcription is still sync in SDK? Actually AsyncOpenAI handles it.
+           
             res = await client.audio.transcriptions.create(model=model_id, file=audio_data)
             text = res.text.strip()
 

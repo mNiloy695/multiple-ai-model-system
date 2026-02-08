@@ -59,7 +59,7 @@ class AImodelView(viewsets.ModelViewSet):
             return AIModelSerializer
         return AIModelLimitedSerializer
 
-from .serializers import ChatSessionSerializer
+from .serializers import ChatSessionListSerializer,ChatSessionSerializer
 
 from django.utils.translation import gettext as _
 
@@ -72,60 +72,122 @@ class CustomPermission(permissions.BasePermission):
         return False
     def has_object_permission(self, request, view, obj):
         return request.user.is_staff or obj.user==request.user
-class ChatSessionView(viewsets.ModelViewSet):
-    queryset=ChatSession.objects.all().prefetch_related('messages')
-    serializer_class=ChatSessionSerializer
-    permission_classes=[CustomPermission]
-
-    def get_queryset(self):
-        user=self.request.user
-
-        if not user.is_staff:
-            return self.queryset.filter(user=user).order_by('-created_at')
-        
-        return self.queryset.all().order_by('-created_at')
     
-    def validate_session_type(self,attrs):
-        session_type=attrs.get('session_type',None)
-        if not session_type:
-            raise ValueError({"error": _("Session type is required")})
+# class ChatSessionView(viewsets.ModelViewSet):
+#     queryset=ChatSession.objects.all().prefetch_related('messages')
+#     serializer_class=ChatSessionSerializer
+#     permission_classes=[CustomPermission]
 
-    def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        # text = serializer.validated_data.get('text', True)
-        # is_text = text if isinstance(text, bool) else bool(text)
-        session_type=serializer.validated_data.get('session_type',None)
-        print(session_type)
-        # model = AIModelInfo.objects.filter(
-        #     session_type=session_type,
-        #     is_active=True
-        # ).order_by('-created_at').first()
+#     def get_queryset(self):
+#         user=self.request.user
 
-        model=serializer.validated_data.get('model',None)
+#         if not user.is_staff:
+#             return self.queryset.filter(user=user).order_by('-created_at')
+        
+#         return self.queryset.all().order_by('-created_at')
+    
+#     def validate_session_type(self,attrs):
+#         session_type=attrs.get('session_type',None)
+#         if not session_type:
+#             raise ValueError({"error": _("Session type is required")})
+
+#     def create(self, request, *args, **kwargs):
+#         serializer = self.get_serializer(data=request.data)
+#         serializer.is_valid(raise_exception=True)
+#         # text = serializer.validated_data.get('text', True)
+#         # is_text = text if isinstance(text, bool) else bool(text)
+#         session_type=serializer.validated_data.get('session_type',None)
+#         print(session_type)
+#         # model = AIModelInfo.objects.filter(
+#         #     session_type=session_type,
+#         #     is_active=True
+#         # ).order_by('-created_at').first()
+
+#         model=serializer.validated_data.get('model',None)
         
        
 
-        if not model:
-            return Response({"error": _("No {} active AI models available.").format(session_type)}, status=400)
-        # Check for previous empty session
-        previous_session = ChatSession.objects.filter(user=request.user).order_by('-created_at').first()
-        if previous_session and not previous_session.messages.exists():
-            # Reuse previous session
-            previous_session.model = model 
-            previous_session.session_type=session_type
-            previous_session.save()
-            data = self.get_serializer(previous_session).data
-            return Response(data, status=200)
+#         if not model:
+#             return Response({"error": _("No {} active AI models available.").format(session_type)}, status=400)
+#         # Check for previous empty session
+#         previous_session = ChatSession.objects.filter(user=request.user).order_by('-created_at').first()
+#         if previous_session and not previous_session.messages.exists():
+#             # Reuse previous session
+#             previous_session.model = model 
+#             previous_session.session_type=session_type
+#             previous_session.save()
+#             data = self.get_serializer(previous_session).data
+#             return Response(data, status=200)
 
 
        
         
-        serializer.save(model=model, user=request.user)
-        headers = self.get_success_headers(serializer.data)
-        return Response(serializer.data, status=201, headers=headers)
+#         serializer.save(model=model, user=request.user)
+#         headers = self.get_success_headers(serializer.data)
+#         return Response(serializer.data, status=201, headers=headers)
  
 
+
+
+
+class ChatSessionView(viewsets.ModelViewSet):
+    permission_classes = [CustomPermission]
+
+    def get_queryset(self):
+        user = self.request.user
+        queryset = ChatSession.objects.all().order_by('-created_at')
+
+    
+        if self.action == 'retrieve':
+            queryset = queryset.prefetch_related('messages')
+
+        if not user.is_staff:
+            queryset = queryset.filter(user=user)
+
+        return queryset
+
+    def get_serializer_class(self):
+        
+        if self.action == 'list':
+            return ChatSessionListSerializer
+
+        
+        return ChatSessionSerializer
+
+    def create(self, request, *args, **kwargs):
+        serializer = ChatSessionSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        session_type = serializer.validated_data.get('session_type')
+        model = serializer.validated_data.get('model')
+
+        if not model:
+            return Response(
+                {"error": _("No {} active AI models available.").format(session_type)},
+                status=400
+            )
+
+        
+        previous_session = ChatSession.objects.filter(
+            user=request.user
+        ).order_by('-created_at').first()
+
+        if previous_session and not previous_session.messages.exists():
+            previous_session.model = model
+            previous_session.session_type = session_type
+            previous_session.save()
+
+            
+            data = ChatSessionListSerializer(previous_session).data
+            return Response(data, status=200)
+
+        session = serializer.save(user=request.user, model=model)
+
+        
+        return Response(
+            ChatSessionListSerializer(session).data,
+            status=201
+        )
 
 
 

@@ -116,6 +116,93 @@ class ChatMessageSerializer(serializers.ModelSerializer):
         
 #         return False
 
+# class ChatSessionSerializer(serializers.ModelSerializer):
+#     messages = ChatMessageSerializer(read_only=True, many=True)
+
+#     model = serializers.PrimaryKeyRelatedField(
+#         queryset=AIModelInfo.objects.all()
+#     )
+#     model_name=serializers.SerializerMethodField(read_only=True)
+
+#     class Meta:
+#         model = ChatSession
+#         fields = [
+#             'id',
+#             'model',
+#             'model_name',
+#             'user',
+#             'messages',
+#             'summary',
+#             'session_type',
+#             'created_at',
+#             'updated_at',
+            
+            
+#         ]
+#         read_only_fields = [
+#             'id',
+#             'created_at',
+#             'updated_at',
+#             'user',
+#             'messages',
+#             'model_name'
+#         ]
+
+#     def validate(self, attrs):
+#         model = attrs.get('model')          # AIModelInfo instance
+#         session_type = attrs.get('session_type')
+
+#         if not model:
+#             raise serializers.ValidationError(
+#                 {"model": "Model is required."}
+#             )
+
+#         if not session_type:
+#             raise serializers.ValidationError(
+#                 {"session_type": "Session type is required."}
+#             )
+
+#         if not self._is_compatible(model.model_type, session_type):
+#             raise serializers.ValidationError(
+#                 {"error": "Model type and session type must be compatible."}
+#             )
+
+#         return attrs
+
+#     def _is_compatible(self, model_type, session_type):
+#         if model_type == session_type:
+#             return True
+
+#         if model_type == "text_or_image_to_video":
+#             return session_type in [
+#                 "text_to_video",
+#                 "image_to_video",
+#                 "text_or_image_to_video",
+#             ]
+
+#         return False
+#     def get_model_name(self, obj):
+#         return obj.model.name if obj.model else None
+class ChatSessionListSerializer(serializers.ModelSerializer):
+    model_name = serializers.SerializerMethodField(read_only=True)
+
+    class Meta:
+        model = ChatSession
+        fields = [
+            'id',
+            'model',
+            'model_name',
+            'user',
+            'summary',
+            'session_type',
+            'created_at',
+            'updated_at',
+        ]
+        read_only_fields = fields
+
+    def get_model_name(self, obj):
+        return obj.model.name if obj.model else None
+
 class ChatSessionSerializer(serializers.ModelSerializer):
     messages = ChatMessageSerializer(read_only=True, many=True)
 

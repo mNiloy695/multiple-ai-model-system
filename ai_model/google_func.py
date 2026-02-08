@@ -3,6 +3,8 @@ import asyncio
 import time
 import requests
 import base64
+import os
+import mimetypes
 from django.contrib.auth import get_user_model
 from django.db import transaction
 from google import genai
@@ -49,14 +51,41 @@ def _error(msg):
 
 
 async def _read_image_to_base64_async(img):
-    try:
-        if img.startswith("http"):
-            resp = await sync_to_async(requests.get)(img, timeout=30)
-            resp.raise_for_status()
-            return base64.b64encode(resp.content).decode("utf-8")
-        return img
-    except Exception:
+    """
+    Helper to convert image URL or local path to base64 for Google GenAI.
+    Bypassing network fetch solves the timeout issue.
+    """
+    if not img or not isinstance(img, str):
         return None
+    
+    if img.startswith("data:"):
+        # If it's already a data URL, extract the base64 part
+        if "," in img:
+            return img.split(",", 1)[1]
+        return img
+
+    # 1. Try local filesystem if it looks like a media URL
+    if "/media/" in img:
+        try:
+            relative_path = img.split("/media/")[-1]
+            # Handle both forward and backward slashes for OS compatibility
+            local_path = os.path.join(settings.MEDIA_ROOT, relative_path.replace('/', os.sep))
+            if os.path.exists(local_path):
+                with open(local_path, "rb") as f:
+                    return base64.b64encode(f.read()).decode("utf-8")
+        except Exception as e:
+            print(f"DEBUG: Failed to read local image for Gemini {img}: {e}")
+
+    # 2. Try fetching via HTTP
+    if img.startswith("http"):
+        try:
+            resp = await sync_to_async(requests.get)(img, timeout=15)
+            if resp.status_code == 200:
+                return base64.b64encode(resp.content).decode("utf-8")
+        except Exception as e:
+            print(f"DEBUG: Failed to fetch remote image for Gemini {img}: {e}")
+            
+    return None
 
 
 async def gemini_response(
@@ -193,9 +222,14 @@ async def gemini_response(
             user_part = {"role": "user", "parts": [{"text": message}]}
             if images_data_list:
                 for img in images_data_list:
+                    # Prefer Base64 delivery to avoid Google GenAI download timeouts
                     img_data = await _read_image_to_base64_async(img)
                     if img_data:
                          user_part["parts"].append({"inline_data": {"mime_type": "image/png", "data": img_data}})
+                    
+                    # Also keep a reference to the URL for context
+                    if isinstance(img, str) and img.startswith("http"):
+                        user_part["parts"].append({"text": f"\n[Image: {img}]"})
             contents.append(user_part)
 
             config = types.GenerateContentConfig(max_output_tokens=final_max_tokens)
