@@ -1,4 +1,4 @@
-from .views import RegisterView, ActivateAccountView, LoginView,LogoutView,CreditTransactionHistoryView,GoogleLoginAPIView,ForgotPasswordView,ResetView,ProfileView,CreditAccountView
+from .views import RegisterView, ActivateAccountView, LoginView,LogoutView,CreditTransactionHistoryView,GoogleLoginAPIView,ForgotPasswordView,ResetView,ProfileView,apple_login,CreditAccountView
 from django.urls import path,include
 from rest_framework.routers import DefaultRouter
 router=DefaultRouter()
@@ -8,6 +8,7 @@ urlpatterns = [
     path('activate/', ActivateAccountView.as_view(), name='activate'),
     path('login/', LoginView.as_view(), name='login'),
     path('google/login/',GoogleLoginAPIView.as_view(),name='google-login'),
+     path('apple-login/',apple_login,name='apple-login'),
     path('logout/', LogoutView.as_view(), name='logout'),
     path('transactions/', CreditTransactionHistoryView.as_view(), name='transaction-history'),
     path('forgot-password/',ForgotPasswordView.as_view(),name="forgot-password"),

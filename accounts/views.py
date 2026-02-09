@@ -305,3 +305,92 @@ class CreditAccountView(APIView):
             return Response(serializer.data, status=status.HTTP_200_OK)
         except CreditAccount.DoesNotExist:
             return Response({"error": _("Credit account not found.")}, status=status.HTTP_404_NOT_FOUND)
+
+
+
+
+
+
+
+
+#Apple Login and Registration 
+
+import requests
+
+import jwt
+from .apple_auth import get_or_create_apple_user
+
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+from rest_framework import status
+import jwt, requests
+from django.conf import settings
+
+APPLE_KEYS_URL = "https://appleid.apple.com/auth/keys"
+
+@api_view(["POST"])
+def apple_login(request):
+    identity_token = request.data.get("identity_token")
+
+    if not identity_token:
+        return Response(
+            {"error": "identity_token is required"},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    try:
+      
+        keys = requests.get(APPLE_KEYS_URL).json()["keys"]
+
+        
+        header = jwt.get_unverified_header(identity_token)
+        
+        key = next(k for k in keys if k["kid"] == header["kid"])
+
+        
+        public_key = jwt.algorithms.RSAAlgorithm.from_jwk(key)
+
+        
+        payload = jwt.decode(
+            identity_token,
+            public_key,
+            algorithms=["RS256"],
+            audience=settings.APPLE_CLIENT_ID,
+            issuer="https://appleid.apple.com",
+        )
+
+       
+        user = get_or_create_apple_user(payload)
+        tokens = generate_jwt_for_user(user=user)
+
+        return Response(tokens, status=status.HTTP_200_OK)
+
+    except jwt.ExpiredSignatureError:
+        return Response(
+            {"error": "Token expired"},
+            status=status.HTTP_401_UNAUTHORIZED
+        )
+
+    except jwt.InvalidAudienceError:
+        return Response(
+            {"error": "Invalid audience"},
+            status=status.HTTP_401_UNAUTHORIZED
+        )
+
+    except jwt.InvalidIssuerError:
+        return Response(
+            {"error": "Invalid issuer"},
+            status=status.HTTP_401_UNAUTHORIZED
+        )
+
+    except jwt.InvalidTokenError:
+        return Response(
+            {"error": "Invalid Apple token"},
+            status=status.HTTP_401_UNAUTHORIZED
+        )
+
+    except Exception as e:
+        return Response(
+            {"error": str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
